@@ -1,6 +1,6 @@
 # hubic-backup
 
-hubic backup command line tool for linux & OSX
+[Hubic](http://hubic.com) backup command line tool for linux & OSX
 
 For the moment only in pre-alpha.
 
