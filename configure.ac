@@ -54,7 +54,7 @@ AC_CHECK_LIB(
 )
 
 # --- JSONCPP ---------------------------------------------------
-AC_CHECK_HEADERS([json/json.h], [], [AC_MSG_ERROR([Can't find jsoncpp headers])])
+AC_CHECK_HEADERS([jsoncpp/json/json.h], [], [AC_MSG_ERROR([Can't find jsoncpp headers])])
 AC_HAVE_LIBRARY(
 	jsoncpp, 
 	[], 
