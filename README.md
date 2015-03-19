@@ -13,15 +13,18 @@ For the moment only in pre-alpha.
 
 ##Dependencies
 
-* [boost-system](http://www.boost.org/doc/libs/1_55_0/libs/system/doc/index.html)
-* [boost-filesystem](http://www.boost.org/doc/libs/1_57_0/libs/filesystem/doc/index.htm)
-* [boost-regex](http://www.boost.org/doc/libs/1_57_0/libs/regex/doc/html/index.html)
-* [boost-program-options](http://www.boost.org/doc/libs/1_57_0/doc/html/program_options.html)
-* [jsoncpp](http://open-source-parsers.github.io/jsoncpp-docs/doxygen/index.html)
+|Library|Ubuntu packet|
+|-------|--------------|
+| [libcurl](http://curl.haxx.se/libcurl/) | ```libcurl4-openssl-dev``` | 
+| [boost-system](http://www.boost.org/doc/libs/1_55_0/libs/system/doc/index.html) |  ```libboost-system-dev``` | 
+| [boost-filesystem](http://www.boost.org/doc/libs/1_57_0/libs/filesystem/doc/index.htm) | ```libboost-filesystem-dev``` | 
+| [boost-regex](http://www.boost.org/doc/libs/1_57_0/libs/regex/doc/html/index.html) | ```libboost-regex-dev``` | 
+| [boost-program-options](http://www.boost.org/doc/libs/1_57_0/doc/html/program_options.html) | ```libboost-program-options-dev``` | 
+| [jsoncpp](http://open-source-parsers.github.io/jsoncpp-docs/doxygen/index.html) | ```libjsoncpp-dev``` | 
 
 ## Usage
 
-usage description :
+###Description :
 
 ```
 Usage: hubic-backup [OPTIONS]
@@ -47,7 +50,7 @@ destination:
   -k [ --crypt-password ] arg        optional crypto password
 ```
 
-simple example :
+###Simple example :
 
 ```
 hubic-backup \

@@ -32,12 +32,13 @@
 #include <iostream>
 #include <set>
 #include <mutex>
+#include <atomic>
 #include <thread>
 #include <chrono>
 
 #include <boost/filesystem.hpp>
 #include <boost/algorithm/string.hpp>
-#include <json/json.h>
+#include <jsoncpp/json/json.h>
 #include <curl/curl.h>
 
 #include "../thirdparty/spdlog/spdlog.h"
