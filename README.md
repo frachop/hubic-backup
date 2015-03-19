@@ -9,7 +9,7 @@ For the moment only in pre-alpha.
 * Exclude files
 * encrypt (openssl interop)
 * upload only modified files
-* logging suppurt using excellent [spdlog](https://github.com/gabime/spdlog) library
+* logging support using excellent [spdlog](https://github.com/gabime/spdlog) library
 
 ##dependencies
 
