@@ -4,3 +4,16 @@
 *.o
 *.zip
 osx
+/Makefile
+/Makefile.in
+/aclocal.m4
+/autom4te.cache/
+/config.*
+/configure
+/stamp-h?
+.deps/
+.dirstamp
+*.o
+*~
+
+
