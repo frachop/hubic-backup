@@ -11,7 +11,6 @@ For the moment only in pre-alpha.
 * upload only modified files
 * logging suppurt using excellent [spdlog](https://github.com/gabime/spdlog) library
 
-
 ##dependencies
 
 * [boost-system](http://www.boost.org/doc/libs/1_55_0/libs/system/doc/index.html)
