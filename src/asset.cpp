@@ -1,0 +1,139 @@
+//
+//  asset.cpp
+//  hubic_api_test
+//
+//  Created by franck on 05/03/2015.
+//  Copyright (c) 2015 Highlands Technologies Solutions. All rights reserved.
+//
+
+#include "asset.h"
+#include "common.h"
+
+//- /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+boost::filesystem::path makeRel(const boost::filesystem::path & root, const boost::filesystem::path & path)
+{
+	auto iRoot = root.begin();
+	const auto iRootEnd = root.end();
+	const auto iPathEnd = path.end();
+	
+	boost::filesystem::path res;
+	for (auto iPath = path.begin(); iPath != iPathEnd; ++iPath) {
+	
+		if (iRoot != iRootEnd) {
+			assert( (*iRoot) == (*iPath) );
+			iRoot++;
+		}
+		else {
+			res /= (*iPath);
+		}
+	}
+
+	return res;
+}
+
+//- /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+CAsset::CAsset(CAsset * parent, const std::string & name, bool bFolder)
+:	_name(name)
+,	_parent(parent)
+,	_isFolder(bFolder)
+,	_srcHash()
+,	_crypted(false)
+,	_dstHash()
+{
+	if (parent) {
+		assert( parent->childByName(_name) == nullptr );
+		parent->_childs.push_back(this);
+	}
+}
+
+CAsset::~CAsset()
+{
+	for (auto p : _childs)
+		delete p;
+}
+
+void CAsset::dump(int rg) const
+{
+	const std::string tabs(rg, '-');
+	LOGD("{}{}", tabs, _name);
+	for (auto p : _childs)
+		p->dump(1+rg);
+}
+
+void CAsset::setFolder( bool bFolder )
+{
+	if (_isFolder == bFolder)
+		return;
+	
+	if (bFolder) { assert(_childs.empty()); }
+	_isFolder = bFolder;
+}
+
+std::size_t CAsset::childCountRec() const
+{
+	std::size_t res(_childs.size());
+	for (auto c : _childs)
+		res += c->childCountRec();
+	
+	return res;
+}
+
+boost::filesystem::path CAsset::getFullPath() const
+{
+	if (_parent == nullptr)
+		return _name;
+	
+	return _parent->getFullPath() / _name;
+}
+
+boost::filesystem::path CAsset::getRelativePath() const
+{
+	if (_parent == nullptr)
+		return boost::filesystem::path();
+	
+	boost::filesystem::path res= _parent->getRelativePath();
+	if (res.empty())
+		return _name;
+		
+	return res / _name;
+}
+
+CAsset * CAsset::find(const boost::filesystem::path & path) const
+{
+	CAsset * p = const_cast<CAsset*>(this);
+	for (const auto i : path)
+	{
+		p= p->childByName(i.string());
+		if (p == nullptr)
+			return nullptr;
+	}
+
+	return p;
+}
+
+boost::filesystem::path CAsset::getRoot() const
+{
+	if (_parent == nullptr)
+		return _name;
+	
+	return _parent->getRoot();
+}
+
+CAsset * CAsset::childAt(std::size_t i) const
+{
+	if (i >= _childs.size())
+		return nullptr;
+	
+	return _childs[i];
+}
+
+CAsset * CAsset::childByName(const std::string & name) const
+{
+	for (const auto c : _childs)
+		if (c->_name == name)
+			return c;
+
+	return nullptr;
+}
