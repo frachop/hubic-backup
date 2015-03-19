@@ -25,6 +25,7 @@
 #pragma once
 
 #include <unistd.h>
+#include <ctypes.h>
 #include <cassert>
 #include <string>
 #include <vector>
