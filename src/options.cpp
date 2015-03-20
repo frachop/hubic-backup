@@ -22,6 +22,8 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
+//[23:52:46.916I] [Auth] Credentials : token = '3e88142ea8c44415a366d966ad8a5d25', endpoint = 'https://lb1040.hubic.ovh.net/v1/AUTH_47e7e0fe42913821a6365ad2e220bcc5', expire = '2015-03-20T23:19:32+01:00'
+
 #include "options.h"
 #include "common.h"
 
@@ -47,7 +49,7 @@ COptions::COptions()
 ,	_excludes()
 ,	_dstContainer()
 ,	_dstFolder()
-,	_cryptPassword()
+,	_cryptoContext(nullptr)
 {
 }
 
@@ -220,10 +222,25 @@ static void loadExcludes(std::set<std::string> & x, const boost::filesystem::pat
 
 #define CHECK_MANDATORY_ARG( a ) if (!exists( (a) )) throw std::logic_error(fmt::format("miss mandatory arg --{}", _o.at( (a) )._key));
 
+static std::string trimRightSlash( const std::string & src)
+{
+	if (src.empty())
+		return "";
+	
+	std::string res(src);
+	while (res[res.length()-1] == '/') {
+		res = res.substr(0, res.length() - 1);
+		if (res.empty())
+			break;
+	}
+	return res;
+}
+
 bool COptionsPriv::parse(int ac, char** av)
 {
 	_argc= ac;
 	_argv= av;
+	
 	
 	po::options_description visible;
 	for ( auto g : _g )
@@ -236,13 +253,25 @@ bool COptionsPriv::parse(int ac, char** av)
 		visible.add(group);
 	}
 	
+	po::options_description hiddens;
+	hiddens.add( boost::shared_ptr<po::option_description>(
+		new po::option_description("auth-token", po::value<std::string>(), "credential token")
+	));
+	hiddens.add( boost::shared_ptr<po::option_description>(
+		new po::option_description("auth-endpoint", po::value<std::string>(), "endpoint")
+	));
+	
+	po::options_description all;
+	all.add(visible);
+	all.add(hiddens);
+
 	try
 	{
 		po::parsed_options parsed =
-		po::command_line_parser(ac, av)
-		.	options(visible)
-		//.	allow_unregistered()
-		.	run()
+			po::command_line_parser(ac, av)
+			.	options(all)
+		//	.	allow_unregistered()
+			.	run()
 		;
 		
 		po::store(parsed, *this);
@@ -266,14 +295,24 @@ bool COptionsPriv::parse(int ac, char** av)
 		if (exists(EOptionFlag::logLevel))
 			setLogSeverity(at(EOptionFlag::logLevel).as<std::string>());
 
-		CHECK_MANDATORY_ARG(EOptionFlag::hubicLogin);
-		_hubicLogin = at(EOptionFlag::hubicLogin).as<std::string>();
+		if (!exists(EOptionFlag::hubicLogin)) {
 		
-		CHECK_MANDATORY_ARG(EOptionFlag::hubicPwd);
-		_hubicPassword = at(EOptionFlag::hubicPwd).as<std::string>();
+				if (count("auth-token") && count("auth-endpoint")) {
+				_authToken   = po::variables_map::at( "auth-token" ).as<std::string>();
+				_authEndpoint= po::variables_map::at( "auth-endpoint" ).as<std::string>();
+			}
+		
+		} else {
+
+			CHECK_MANDATORY_ARG(EOptionFlag::hubicLogin);
+			_hubicLogin = at(EOptionFlag::hubicLogin).as<std::string>();
+			
+			CHECK_MANDATORY_ARG(EOptionFlag::hubicPwd);
+			_hubicPassword = at(EOptionFlag::hubicPwd).as<std::string>();
+		}
 
 		CHECK_MANDATORY_ARG(EOptionFlag::srcFolder);
-		_srcFolder = at(EOptionFlag::srcFolder).as<std::string>();
+		_srcFolder = trimRightSlash( at(EOptionFlag::srcFolder).as<std::string>());
 
 		if (!boost::filesystem::exists(_srcFolder))
 			 throw std::logic_error(fmt::format("src folder '{}' doesn't exists", _srcFolder.string()));
@@ -290,8 +329,12 @@ bool COptionsPriv::parse(int ac, char** av)
 		CHECK_MANDATORY_ARG(EOptionFlag::dstFolder);
 		_dstFolder = at(EOptionFlag::dstFolder).as<std::string>();
 
-		if (exists( EOptionFlag::cryptPassword))
-			_cryptPassword = at(EOptionFlag::cryptPassword).as<std::string>();
+		if (exists( EOptionFlag::cryptPassword)) {
+			const std::string cryptPassword = at(EOptionFlag::cryptPassword).as<std::string>();
+			assert( _cryptoContext == nullptr );
+			_cryptoContext = CCryptoContext::create(cryptPassword);
+			assert(_cryptoContext);
+		}
 
 	}
 	catch (const std::exception & e)
@@ -316,7 +359,7 @@ bool COptionsPriv::parse(int ac, char** av)
 		LOGI(S_LIB " {}", "excludes", s);
 	LOGI(S_LIB " {}", "Container", _dstContainer);
 	LOGI(S_LIB " {}", "Destination", _dstFolder);
-	LOGI(S_LIB " {}", "Crypted ?", _cryptPassword.empty() ? "no" : "yes");
+	LOGI(S_LIB " {}", "Crypted ?", crypted() ? "yes" : "no");
 
 	return true;
 }

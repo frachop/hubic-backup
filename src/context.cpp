@@ -40,12 +40,17 @@ CContext::CContext(int argc, char ** argv)
 bool CContext::getCredentials()
 {
 	assert( _options);
-	_cr = ::getCredentials(_options->_hubicLogin, _options->_hubicPassword);
-
-	const std::string s = R"c(
-	{"token":"48c8f44f3c34473aa1927adcaa3a31a3","endpoint":"https://lb1040.hubic.ovh.net/v1/AUTH_47e7e0fe42913821a6365ad2e220bcc5","expires":"2015-03-20T01:15:51+01:00"}
-	)c";
-	//_cr.fromJson(s);
+	if (_options->_authToken.empty())
+		_cr = ::getCredentials(_options->_hubicLogin, _options->_hubicPassword);
 	
+	else {
+		//const std::string s = R"c(
+		//{"token":"48c8f44f3c34473aa1927adcaa3a31a3","endpoint":"https://lb1040.hubic.ovh.net/v1/AUTH_47e7e0fe42913821a6365ad2e220bcc5","expires":"2015-03-20T01:15:51+01:00"}
+		//)c";
+	
+		_cr.fromJson(
+			"{\"token\":\"" + _options->_authToken + "\",\"endpoint\":\"" + _options->_authEndpoint + "\",\"expires\":\"2015-03-20T01:15:51+01:00\"}"
+		);
+	}
 	return true;
 }

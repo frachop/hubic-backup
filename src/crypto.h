@@ -35,6 +35,23 @@ openssl enc -aes-256-cbc -d -in <source path> -out <destination path> -k <passwo
 
 */
 
+//- /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class CCryptoContext
+{
+public:
+	static CCryptoContext * create(const std::string & pwd);
+
+public:
+	virtual ~CCryptoContext() {}
+
+protected: // private management
+	CCryptoContext() {}
+};
+
+
+//- /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 class CCryptEngine
 {
 public:
@@ -42,7 +59,7 @@ public:
 	virtual ~CCryptEngine();
 	
 public:
-	bool encryptStart(std::vector<uint8_t> & dst, const std::string & pwd);
+	bool encryptStart(std::vector<uint8_t> & dst, CCryptoContext * ctx);
 	std::size_t neededSize( std::size_t srcSize) const;
 	bool update(std::vector<uint8_t> & dst, const void * pSrc, std::size_t srcSize);
 	bool finalize(std::vector<uint8_t> & dst);
@@ -52,4 +69,5 @@ private:
 	CImpl *  _p;
 };
 
+//- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -106,7 +106,29 @@ typedef CTRandomBytes<EVP_MAX_IV_LENGTH > CInitialValue;
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static void fromPass(CSalt & salt, CKey & key, CInitialValue & iv, const std::string & pass )
+class CCryptoContextImpl
+:	public CCryptoContext
+{
+public:
+	CCryptoContextImpl() {}
+	virtual ~CCryptoContextImpl() {}
+	bool init( const std::string & pwd);
+	
+public:
+	const CSalt         & salt() const { return _salt; }
+	const CKey          & key () const { return _key; }
+	const CInitialValue & iv  () const { return _iv; }
+
+private:
+	CSalt         _salt;
+	CKey          _key;
+	CInitialValue _iv;
+
+};
+
+//- /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool CCryptoContextImpl::init( const std::string & pass)
 {
 	OpenSSL_add_all_algorithms();
 	
@@ -118,11 +140,11 @@ static void fromPass(CSalt & salt, CKey & key, CInitialValue & iv, const std::st
 	dgst=EVP_get_digestbyname("md5");
 	assert(dgst);
 	
-	salt.generate();
-	if(!EVP_BytesToKey(cipher, dgst, salt, (unsigned char *) pass.c_str(), static_cast<int>(pass.length()), 1, key, iv))
+	_salt.generate();
+	if(!EVP_BytesToKey(cipher, dgst, _salt, (unsigned char *) pass.c_str(), static_cast<int>(pass.length()), 1, _key, _iv))
 	{
 		LOGE("EVP_BytesToKey failed");
-		exit(0);
+		exit(EXIT_FAILURE);
 	}
 	
 	//printf("Salt: "); for(int i=0; i<8; ++i) { printf("%02x", salt[i]); } printf("\n");
@@ -130,6 +152,20 @@ static void fromPass(CSalt & salt, CKey & key, CInitialValue & iv, const std::st
 	//printf("IV: "); for(int i=0; i<cipher->iv_len; ++i) { printf("%02x", iv[i]); } printf("\n");
 	
 	EVP_cleanup();
+	return true;
+}
+
+CCryptoContext * CCryptoContext::create(const std::string & pwd)
+{
+	if (pwd.empty())
+		return nullptr;
+	
+	CCryptoContextImpl * pRes = new CCryptoContextImpl();
+	if (!pRes->init(pwd)) {
+		delete pRes;
+		pRes = nullptr;
+	}
+	return pRes;
 }
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -138,7 +174,7 @@ class CCryptEngine::CImpl
 {
 public:
 	CImpl();
-	bool initialize(std::vector<uint8_t> & dst, const std::string & pwd);
+	bool initialize(std::vector<uint8_t> & dst, const CCryptoContextImpl & cryptoCtx);
 	bool update(std::vector<uint8_t> & dst, const void * pSrc, std::size_t srcSize);
 	bool finalize(std::vector<uint8_t> & dst);
 
@@ -155,18 +191,13 @@ CCryptEngine::CImpl::CImpl()
 {
 }
 
-bool CCryptEngine::CImpl::initialize(std::vector<uint8_t> & dst, const std::string & pwd)
+bool CCryptEngine::CImpl::initialize(std::vector<uint8_t> & dst, const CCryptoContextImpl & cryptoCtx)
 {
-	CSalt salt;
-	CKey key;
-	CInitialValue iv;
-	fromPass(salt, key, iv, pwd );
-	
 	constexpr int doEncrypt = 1;
 
 	dst.resize( 16 );
 	memcpy( dst.data(), "Salted__", 8);
-	memcpy( dst.data() + 8, salt, 8);
+	memcpy( dst.data() + 8, cryptoCtx.salt(), 8);
 
 	/* Don’t set key or IV because we will modify the parameters */
 	EVP_CIPHER_CTX_init(&_ctx);
@@ -174,7 +205,7 @@ bool CCryptEngine::CImpl::initialize(std::vector<uint8_t> & dst, const std::stri
 	EVP_CIPHER_CTX_set_key_length(&_ctx, (int)CKey::LENGTH);
 	
 	/* We finished modifying parameters so now we can set key and IV */
-	EVP_CipherInit_ex(&_ctx, nullptr, nullptr, key, iv, doEncrypt);
+	EVP_CipherInit_ex(&_ctx, nullptr, nullptr, cryptoCtx.key(), cryptoCtx.iv(), doEncrypt);
 
 	return true;
 }
@@ -217,13 +248,14 @@ CCryptEngine::~CCryptEngine()
 	delete _p;
 }
 
-bool CCryptEngine::encryptStart(std::vector<uint8_t> & dst, const std::string & pwd)
+bool CCryptEngine::encryptStart(std::vector<uint8_t> & dst, CCryptoContext * ctx)
 {
-	if (_p)
+	if (_p || (ctx == nullptr))
 		return false;
 	
 	_p = new CImpl;
-	return _p->initialize(dst, pwd);
+	assert( dynamic_cast<CCryptoContextImpl*>(ctx));
+	return _p->initialize(dst, *dynamic_cast<CCryptoContextImpl*>(ctx));
 }
 
 std::size_t CCryptEngine::neededSize( std::size_t srcSize) const

@@ -252,7 +252,7 @@ CSynchronizer::~CSynchronizer()
 void CSynchronizer::start()
 {
 	assert( _threads.empty() );
-	constexpr int cnt = 15;
+	constexpr int cnt = 1;
 	for (int i=0; i<cnt; ++i)
 		_threads.push_back( std::thread( &CSynchronizer::run, this) );
 }
@@ -373,7 +373,7 @@ int main(int argc, char ** argv)
 	md5LocalEngine.start(1);
 
 	remoteLs.waitForDone();
-	md5RemoteEngine.start(5);
+	md5RemoteEngine.start(1);
 	synchronizer.start();
 	
 	srcParser.waitDone();

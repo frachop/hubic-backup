@@ -49,17 +49,22 @@ size_t CUploader::rdd(uint8_t *pDst, size_t size, size_t nmemb)
 		return 0;
 
 	std::size_t uploaded= 0;
-	if (crypted())
+	if (!crypted())
 	{
 		uploaded= fread(pDst,size,nmemb,_f);
 		_bDone = feof(_f);
 		
 	} else {
+		if (_crt->getRelativePath().filename().string() == "._HelloKitty3.jpeg")
+		{
+			LOGD("");
+		}
+
 
 		std::vector<uint8_t> cryptedData;
 		if (_totalUploaded == 0) {
 			
-			_cryptor.encryptStart(cryptedData, _ctx._options->_cryptPassword);
+			_cryptor.encryptStart(cryptedData, _ctx._options->_cryptoContext);
 			memcpy( pDst + uploaded, cryptedData.data(), cryptedData.size());
 			
 			_md5EncComputer.init();
@@ -91,6 +96,7 @@ size_t CUploader::rdd(uint8_t *pDst, size_t size, size_t nmemb)
 			}
 			
 			_md5EncComputer.done();
+			LOGD("md5 encrypted '{}' = '{}'", _crt->getRelativePath().string(), _md5EncComputer.getDigest().hex());
 		}
 		
 		_totalReaded += readed;
@@ -158,6 +164,7 @@ bool CUploader::upload(CAsset * p)
 	_rq.head(url);
 	if (NMD5::CDigest::fromString(_rq.getResponseHeaderField("Etag")) != _md5EncComputer.getDigest()) {
 		LOGE("Error uploading encrypted {}", url);
+		LOGD("md5 mismatch '{}' != '{}'", _rq.getResponseHeaderField("Etag"), _md5EncComputer.getDigest().hex());
 		return false;
 	}
 
