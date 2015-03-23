@@ -26,7 +26,7 @@
 
 * clone sources files ```git clone https://github.com/frachop/hubic-backup.git```
 * install dependencies ```sudo apt-get install libboost-system-dev libcurl4-openssl-dev libboost-filesystem-dev libboost-regex-dev libboost-program-options-dev libjsoncpp-dev```
-* launch automake ```aclocal && automake && autonconf```
+* launch automake ```aclocal && automake && autoconf```
 * build sources ```./configure && make all```
 * use the binary file which path is ```src/hubic-backup```
  
