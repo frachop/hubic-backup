@@ -39,6 +39,7 @@ class CContext
 {
 public:
 	CContext(int argc, char ** argv);
+	bool crypted() const { return _options ? _options->crypted() : false; }
 	bool getCredentials();
 	bool aborted() { return _aborted; }
 	void abort();
@@ -52,6 +53,8 @@ public:
 	CTQueue<CAsset> _localMd5DoneQueue;
 	CTQueue<CAsset> _remoteMd5Queue;
 	CTQueue<CAsset> _remoteMd5DoneQueue;
+
+	NMD5::CDigest _cryptoKey;
 
 private:
 	CCurlLibrary _curlLib;

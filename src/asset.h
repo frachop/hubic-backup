@@ -37,7 +37,7 @@ struct CHash
 	CHash() : _computed(false), _len(0), _md5() {}
 	CHash(const CHash & h) : _computed(h._computed), _len(h._len), _md5(h._md5) {}
 	CHash& operator=(const CHash & h) { if (this != &h) { _computed= h._computed; _len= h._len; _md5 = h._md5; } return (*this); }
-	bool operator==(const CHash & h) const { assert( _computed && h._computed); return (_len == h._len) && ( _md5 == h._md5 ); }
+	bool operator==(const CHash & h) const { assert( _computed && h._computed); return (_len == h._len) && (_md5 == h._md5); }
 	
 	bool          _computed;
 	std::size_t   _len;
@@ -77,6 +77,9 @@ public:
 	void setSrcHash(const CHash & h);
 	void setDstHash(const CHash & h);
 
+	const NMD5::CDigest & getRemoteCryptoKey() const { return _remoteCryptoKey; }
+	void setRemoteCryptoKey(const NMD5::CDigest & k) { _remoteCryptoKey = k; }
+
 public:
 	bool isCrypted() { return _crypted; }
 	void setCrypted(bool c) { _crypted = c; }
@@ -94,6 +97,7 @@ private:
 	std::mutex _dstHashMutex;
 	std::atomic_bool _crypted;
 	CHash _dstHash;
+	NMD5::CDigest _remoteCryptoKey;
 };
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -147,6 +147,7 @@ bool CLocalMd5Process::process( CAsset * p)
 		
 		//LOGD("computing md5 of {}", p->getFullPath().string());
 		CHash h;
+		// TODO: Check Error on compute MD5 failed !! 
 		h._computed= NMD5::computeFileMd5(h._md5, p->getFullPath().string(), &h._len);
 		p->setSrcHash(h);
 	}
@@ -203,6 +204,7 @@ bool CRemoteMd5Process::process(CAsset * p)
 				} else {
 					h._md5 = NMD5::CDigest::fromString(uncryptedMd5);
 					h._len = atoll( rq.getResponseHeaderField(metaUncryptedLen).c_str() );
+					p->setRemoteCryptoKey( NMD5::CDigest::fromString( rq.getResponseHeaderField(metaCryptoKey) ) );
 				}
 
 				h._computed = true;
@@ -345,11 +347,21 @@ void CSynchronizer::run()
 				
 				if (localH == remoteH)
 				{
+					if (_ctx.crypted())
+					{
+						// check if password changed
+						if (_ctx._cryptoKey != p->getRemoteCryptoKey() ) {
+							LOGD("REPLACE PASSWORD CHANGED '{}'", p->getRelativePath().string());
+							if (!uploader.upload(p))
+								_ctx.abort();
+						}
+					}
+				
 					LOGD("SKIP '{}'", p->getRelativePath().string());
 					
 				} else {
 				
-					LOGD("REPLACE '{}'", p->getRelativePath().string());
+					LOGD("REPLACE CONTENT CHANGED '{}'", p->getRelativePath().string());
 					if (!uploader.upload(p))
 						_ctx.abort();
 				}

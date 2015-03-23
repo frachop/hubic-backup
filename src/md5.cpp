@@ -180,7 +180,6 @@ namespace NMD5 {
 
 	//- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
 	bool computeFileMd5(CDigest & res, const std::string &path, std::size_t * fileSize)
 	{
 		if (fileSize)
@@ -218,6 +217,18 @@ namespace NMD5 {
 		c.done();
 		res= c.getDigest();
 		return true;
+	}
+
+	//- /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	CDigest computeMd5(const void* data, std::size_t len)
+	{
+		CComputer c;
+		c.init();
+		if (len && data)
+			c.feed( data, len );
+		c.done();
+		return c.getDigest();
 	}
 
 }

@@ -23,6 +23,7 @@
 /*************************************************************************/
 
 #include "context.h"
+#include "crypto.h"
 
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -63,6 +64,10 @@ CContext::CContext(int argc, char ** argv)
 	_console->set_level(spdlog::level::trace);
 #endif
 	_options = COptions::get( argc, argv );
+	
+	if (_options->crypted())
+		_cryptoKey = getCryptoKey(_options->_cryptoPassword);
+	
 }
 
 bool CContext::getCredentials()

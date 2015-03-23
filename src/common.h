@@ -82,6 +82,8 @@ namespace spdlog {
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-constexpr const char * metaUncryptedMd5= "X-Object-Meta-UncryptedMd5";
-constexpr const char * metaUncryptedLen= "X-Object-Meta-UncryptedLen";
+constexpr const char * metaUncryptedMd5= "X-Object-Meta-Hubk-UncryptedMd5";
+constexpr const char * metaUncryptedLen= "X-Object-Meta-Hubk-UncryptedLen";
+constexpr const char * metaVersion     = "X-Object-Meta-Hubk-Version";
+constexpr const char * metaCryptoKey   = "X-Object-Meta-Hubk-Cryptokey";
 

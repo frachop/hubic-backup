@@ -27,6 +27,7 @@
 #include <string>
 #include <vector>
 #include <stdint.h>
+#include "md5.h"
 
 /*
 
@@ -49,11 +50,13 @@ protected: // private management
 	CCryptoContext() {}
 };
 
+NMD5::CDigest getCryptoKey(const std::string & pwd);
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class CCryptEngine
 {
+	
 public:
 	CCryptEngine();
 	virtual ~CCryptEngine();

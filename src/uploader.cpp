@@ -129,7 +129,20 @@ bool CUploader::upload(CAsset * p)
 	
 	const CHash h = p->getSrcHash();
 	
+	_crt = p;
+	_totalReaded= _totalUploaded= 0;
+	_bStarting = true;
+	_bDone = false;
+	_md5EncComputer.init();
+	
+	if (crypted()) {
+		assert( _cryptoContext == nullptr );
+		// create one context for each upload so the salt will be regenerated !
+		_cryptoContext = CCryptoContext::create(_ctx._options->_cryptoPassword);
+	}
+	
 	_rq.addHeader("X-Auth-Token", _ctx._cr.token());
+	_rq.addHeader(metaVersion, HUBACK_VERSION);
 	
 	if (!crypted()) {
 	
@@ -143,6 +156,7 @@ bool CUploader::upload(CAsset * p)
 		_rq.addHeader("Content-Type", "application/octet-stream");
 		_rq.addHeader(metaUncryptedMd5, p->getSrcHash()._md5.hex());
 		_rq.addHeader(metaUncryptedLen, fmt::format("{}", p->getSrcHash()._len));
+		_rq.addHeader(metaCryptoKey   , _ctx._cryptoKey.hex());
 	}
 	
 	_f = fopen(p->getFullPath().c_str(), "rb");
@@ -150,18 +164,6 @@ bool CUploader::upload(CAsset * p)
 	_rq.setopt(CURLOPT_READFUNCTION, CUploader::_rdd);
 	
 	const std::string url= fmt::format("{}/{}/{}", _ctx._cr.endpoint(), _ctx._options->_dstContainer, (_ctx._options->_dstFolder / _rq.escapePath(p->getRelativePath())).string() );
-	
-	_crt = p;
-	_totalReaded= _totalUploaded= 0;
-	_bStarting = true;
-	_bDone = false;
-	_md5EncComputer.init();
-	
-	if (crypted()) {
-		assert( _cryptoContext == nullptr );
-		// create one context for each upload so the salt will be regenerated !
-		_cryptoContext = CCryptoContext::create(_ctx._options->_cryptoPassword);
-	}
 
 	_rq.put(url);
 
@@ -170,7 +172,7 @@ bool CUploader::upload(CAsset * p)
 		_cryptoContext = nullptr;
 
 		_md5EncComputer.done();
-		LOGD("md5 encrypted '{}' = '{}'", _crt->getRelativePath().string(), _md5EncComputer.getDigest().hex());
+		LOGT("md5 encrypted '{}' = '{}'", _crt->getRelativePath().string(), _md5EncComputer.getDigest().hex());
 	}
 
 	fclose(_f);
@@ -195,7 +197,7 @@ bool CUploader::upload(CAsset * p)
 		return false;
 	}
 
-	LOGD("Crypted Md5 : {} Ok.", _md5EncComputer.getDigest().hex() );
+	LOGT("Crypted Md5 : {} Ok.", _md5EncComputer.getDigest().hex() );
 	LOGI("'{}' uploaded Ok.", url );
 	
 	return true;

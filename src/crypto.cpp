@@ -30,6 +30,20 @@
 #pragma GCC diagnostic push 
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
+static const std::string cKeySaltFormat=
+	"g-D0>5F3uxj+Mytq-eHhppabbtmLkqI1"
+	"EJnv+A!fy==l/zlfdLhK6pNx%*6/LCt4"
+	"{}" // Md5(Key)
+	"r!H-=6+h94je*Ggadh9-050K!A/cC66d"
+	"Fv<+ujbdI1NrI4@1eadxAu1xAhrfjAF4"
+	"DG%KDy37puA!wne8Pl2Nh*FpFfDj*1hA"
+	"{}" // Md5(I.V.)
+	"KM=bDoEvn%GNIaA*%I!66%<dcGD=wNBc"
+	"=oj>-tO93zo56=B2z9E!Jprd<c@iFkIl"
+	"/b8=m<aEuJLpr4C*bng6kOfB+tB!wOu0"
+;
+
+
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template<unsigned char SIZE>
@@ -47,6 +61,7 @@ public:
 public:
 	void generate();
 	void set(const unsigned char* src);
+	uint8_t operator[](std::size_t i) const { assert( i < LENGTH); return _key[i]; }
 	
 public:
 	operator const unsigned char*() const { return _key; }
@@ -112,7 +127,7 @@ class CCryptoContextImpl
 public:
 	CCryptoContextImpl() {}
 	virtual ~CCryptoContextImpl() {}
-	bool init( const std::string & pwd);
+	bool init( const std::string & pwd, bool salted = true);
 	
 public:
 	const CSalt         & salt() const { return _salt; }
@@ -125,16 +140,32 @@ private:
 	CInitialValue _iv;
 
 };
+//- /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+NMD5::CDigest getCryptoKey(const std::string & pwd)
+{
+	CCryptoContextImpl c;
+	c.init( pwd, false );
+	return NMD5::computeMd5(
+		fmt::format(cKeySaltFormat,
+			NMD5::computeMd5(c.key(), CKey::LENGTH).hex(),
+			NMD5::computeMd5(c.iv(), CInitialValue::LENGTH).hex()
+		)
+	);
+}
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
-bool CCryptoContextImpl::init( const std::string & pass)
+bool CCryptoContextImpl::init( const std::string & pass, bool salted)
 {
 	static std::mutex _m;
+	std::lock_guard<std::mutex> lock(_m);
 	
-	_m.lock();
-	OpenSSL_add_all_algorithms();
+	static bool _initialized(false);
+	if (!_initialized) {
+		_initialized = true;
+		OpenSSL_add_all_algorithms();
+	}
 	
 	const EVP_CIPHER *cipher;
 	cipher = EVP_aes_256_cbc(); //EVP_get_cipherbyname("aes-256-cbc");
@@ -144,23 +175,33 @@ bool CCryptoContextImpl::init( const std::string & pass)
 	dgst=EVP_get_digestbyname("md5");
 	assert(dgst);
 	
-	_salt.generate();
-	if(!EVP_BytesToKey(cipher, dgst, _salt, (unsigned char *) pass.c_str(), static_cast<int>(pass.length()), 1, _key, _iv))
+	if (salted)
+		_salt.generate();
+	
+	//	EVP_BytesToKey(cipher, dgst, salted ? _salt : nullptr, (unsigned char *) pass.c_str(), static_cast<int>(pass.length()), 1, _key, _iv)
+	//  failed!!
+	
+	bool bOk(false);
+	if (salted)
+		bOk = EVP_BytesToKey(cipher, dgst, _salt, (unsigned char *) pass.c_str(), static_cast<int>(pass.length()), 1, _key, _iv);
+	else
+		bOk = EVP_BytesToKey(cipher, dgst, nullptr, (unsigned char *) pass.c_str(), static_cast<int>(pass.length()), 1, _key, _iv);
+	
+	if (!bOk)
 	{
 		LOGE("EVP_BytesToKey failed");
 		exit(EXIT_FAILURE);
 	}
 	
-	//printf("Salt: "); for(int i=0; i<8; ++i) { printf("%02x", salt[i]); } printf("\n");
-	//printf("Key: "); for(int i=0; i<cipher->key_len; ++i) { printf("%02x", key[i]); } printf("\n");
-	//printf("IV: "); for(int i=0; i<cipher->iv_len; ++i) { printf("%02x", iv[i]); } printf("\n");
+	//printf("Salt: "); for(int i=0; i<8; ++i) { printf("%02x", _salt[i]); } printf("\n");
+	//printf("Key: "); for(int i=0; i<cipher->key_len; ++i) { printf("%02x", _key[i]); } printf("\n");
+	//printf("IV: "); for(int i=0; i<cipher->iv_len; ++i) { printf("%02x", _iv[i]); } printf("\n");
 	
 	// Do no clean openssl library now because curl needs it to
 	// use httpS protocol.
 	// this avoid 'SSL routines:SSL_CTX_new:unable to load ssl2 md5 routines' error
 	// --EVP_cleanup();--
-	
-	_m.unlock();
+
 	return true;
 }
 
@@ -191,7 +232,7 @@ public:
 	std::size_t neededSize( std::size_t srcSize) const { return srcSize + EVP_CIPHER_CTX_block_size(&_ctx) + 1; }
 
 private:
-	 EVP_CIPHER_CTX _ctx;
+	EVP_CIPHER_CTX _ctx;
 };
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
