@@ -155,7 +155,11 @@ bool CCryptoContextImpl::init( const std::string & pass)
 	//printf("Key: "); for(int i=0; i<cipher->key_len; ++i) { printf("%02x", key[i]); } printf("\n");
 	//printf("IV: "); for(int i=0; i<cipher->iv_len; ++i) { printf("%02x", iv[i]); } printf("\n");
 	
-	EVP_cleanup();
+	// Do no clean openssl library now because curl needs it to
+	// use httpS protocol.
+	// this avoid 'SSL routines:SSL_CTX_new:unable to load ssl2 md5 routines' error
+	// --EVP_cleanup();--
+	
 	_m.unlock();
 	return true;
 }
