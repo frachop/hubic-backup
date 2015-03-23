@@ -28,7 +28,7 @@
 
 CUploader::CUploader(CContext & ctx)
 :	CContextual(ctx)
-,	_rq()
+,	_rq(ctx._options->_curlVerbose)
 ,	_crt(nullptr)
 ,	_f(nullptr)
 ,	_totalReaded(0)

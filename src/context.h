@@ -41,7 +41,7 @@ public:
 	CContext(int argc, char ** argv);
 	bool getCredentials();
 	bool aborted() { return _aborted; }
-	void abort() { _aborted = true; }
+	void abort();
 
 public:
 	const COptions * _options;

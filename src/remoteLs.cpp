@@ -24,7 +24,7 @@
 
 #include "remoteLs.h"
 #include "common.h"
-#include "curl.h"
+#include "request.h"
 #include "asset.h"
 
 CRemoteLs::CRemoteLs(CContext & ctx)
@@ -53,7 +53,7 @@ void CRemoteLs::run()
 {
 	LOGD("Building destination file list... ");
 
-	CRequest rq;
+	CRequest rq(_ctx._options->_curlVerbose);
 	rq.addHeader("X-Auth-Token", _ctx._cr.token());
 	
 	const boost::filesystem::path dstFolder(_ctx._options->_dstFolder);

@@ -50,6 +50,9 @@ COptions::COptions()
 ,	_dstContainer()
 ,	_dstFolder()
 ,	_cryptoPassword()
+,	_authToken()
+,	_authEndpoint()
+,	_curlVerbose(false)
 {
 }
 
@@ -260,6 +263,9 @@ bool COptionsPriv::parse(int ac, char** av)
 	hiddens.add( boost::shared_ptr<po::option_description>(
 		new po::option_description("auth-endpoint", po::value<std::string>(), "endpoint")
 	));
+	hiddens.add( boost::shared_ptr<po::option_description>(
+		new po::option_description("curl-verbose", po::value<std::string>(), "curl verbose on/off")
+	));
 	
 	po::options_description all;
 	all.add(visible);
@@ -331,6 +337,10 @@ bool COptionsPriv::parse(int ac, char** av)
 
 		if (exists( EOptionFlag::cryptPassword)) 
 			_cryptoPassword = at(EOptionFlag::cryptPassword).as<std::string>();
+
+		if (count("curl-verbose")) {
+			_curlVerbose = (po::variables_map::at( "curl-verbose" ).as<std::string>() == "on");
+		}
 
 	}
 	catch (const std::exception & e)

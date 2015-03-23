@@ -22,81 +22,59 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
 /*************************************************************************/
 
+#pragma once
+
 #include "curl.h"
-#include "common.h"
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-CCurlLibrary::CCurlLibrary()
+class CRequest
 {
-	CURLcode c = curl_global_init(CURL_GLOBAL_ALL);
-	if (c) {
-		std::cerr << "can't init curl" << std::endl;
-		exit(EXIT_FAILURE);
-	}
-}
+public:
+	enum TYPE {
+		GET, HEAD, PUT, POST, DELETE
+	};
 
-CCurlLibrary::~CCurlLibrary()
-{
-	curl_global_cleanup();
-}
+public:
+	CRequest(bool bVerbose);
+	virtual ~CRequest() {}
 
-
-//- /////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-CCurl::CCurl()
-:	_p(curl_easy_init())
-{
-}
-
-CCurl::~CCurl()
-{
-	if (_p) curl_easy_cleanup(_p);
-}
-
-
-//- /////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-std::string CCurl::escapeString( const std::string & src) const
-{
-	assert(_p);
-	std::string result;
-	char * p = curl_easy_escape( _p , src.c_str() , static_cast<int>(src.length()) );
-	if (p) {
-		result = p;
-		curl_free(p);
-	}
-	return result;
-}
-
-boost::filesystem::path CCurl::escapePath(const boost::filesystem::path & path) const
-{
-	boost::filesystem::path res;
-	for (const auto i : path)
-		res = res / escapeString(i.string());
+public:
+	void addHeader( const std::string & str);
+	void addHeader( const std::string & key, const std::string & value);
 	
-	return res;
-}
-
-size_t CCurl::wfString(void *ptr, size_t size, size_t nmemb, std::string * s)
-{
-	std::vector<char> v;
-	v.reserve(1 + size*nmemb);
-	for (size_t i=0; i<size*nmemb; ++i)
-		v.push_back(((char*)ptr)[i]);
-	v.push_back('\0');
-	(*s) += v.data();
+public:
+	operator const CCurl& () const { return _curl; }
+	const CCurl& curl() const { return _curl; }
 	
-	return size*nmemb;
-}
+	template<typename T> CURLcode setopt(CURLoption option, T v) { return _curl.setopt( option, v); }
+	void setPostData(const std::string & data);
 
-CURLcode CCurl::perform(std::string & response) const
-{
-	assert(_p);
-	response.clear();
-	setopt(CURLOPT_WRITEFUNCTION, wfString);
- 	setopt(CURLOPT_WRITEDATA, &response);
-	return perform();
-}
+public:
+	virtual CURLcode perform(TYPE t, const std::string & url);
+	CURLcode get (const std::string & url) { return perform(GET, url); }
+	CURLcode put (const std::string & url) { return perform(PUT, url); }
+	CURLcode head(const std::string & url) { return perform(HEAD, url); }
+	CURLcode post(const std::string & url) { return perform(POST, url); }
+	CURLcode del (const std::string & url) { return perform(DELETE, url); }
+	std::string escapeString( const std::string & src) const { return curl().escapeString( src ); }
+	boost::filesystem::path escapePath(const boost::filesystem::path & src) const { return curl().escapePath( src ); }
+
+	const std::string & getResponse() const { return _response; }
+	const std::string & getHeaderResponse() const { return _headerResponse; }
+	long  getHttpResponseCode() const { return _httpResponseCode; }
+
+	std::string getResponseHeaderField(const std::string & key) const;
+
+private:
+	std::list<std::string> _headers;
+	CCurl _curl;
+	
+	bool        _bVerbose;
+	long        _httpResponseCode;
+	std::string _response;
+	std::string _headerResponse;
+	std::string _postData;
+	std::map<std::string, std::string> _headerMap;
+};
 

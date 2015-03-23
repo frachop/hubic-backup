@@ -25,7 +25,7 @@
 #include "auth.h"
 #include "common.h"
 #include "base64.h"
-#include "curl.h"
+#include "request.h"
 #include "token.h"
 
 #include <jsoncpp/json/json.h>
@@ -50,10 +50,9 @@ static const std::string argScope = "usage.r,account.r,getAllLinks.r,credentials
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static std::string requestCode(const CGetCredentialSettings & settings)
+static std::string requestCode(CRequest & request, const CGetCredentialSettings & settings)
 {
 	LOGD(AUTH_LOG "requesting code ...");
-	CRequest request;
 	const CCurl & curl = request.curl();
 	
 	const std::string url = fmt::format("{}/?client_id={}&redirect_uri={}&scope={}&response_type=code&state=none"
@@ -84,11 +83,10 @@ static std::string requestCode(const CGetCredentialSettings & settings)
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static std::string requestTokenCode( const std::string & code, const CGetCredentialSettings & settings)
+static std::string requestTokenCode(CRequest & rq,  const std::string & code, const CGetCredentialSettings & settings)
 {
 	LOGD(AUTH_LOG "request token code ...");
 
-	CRequest rq;
 	const std::string datas = fmt::format("oauth={}&usage=r&account=r&getAllLinks=r&credentials=r&activate=w&links=r&action=accepted&login={}&user_pwd={}&links=w&links=d"
 	,	code
 	,	rq.escapeString(settings._login)
@@ -122,12 +120,10 @@ static std::string requestTokenCode( const std::string & code, const CGetCredent
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-CToken requestToken(const std::string & code, const CGetCredentialSettings & settings)
+CToken requestToken(CRequest & rq, const std::string & code, const CGetCredentialSettings & settings)
 {
 	LOGD(AUTH_LOG "request token ...");
 
-	CRequest rq;
-	
 	const std::string datas = fmt::format("code={}&redirect_uri={}&grant_type=authorization_code"
 	,	code
 	,	rq.escapeString(argRedirectUri)
@@ -141,7 +137,6 @@ CToken requestToken(const std::string & code, const CGetCredentialSettings & set
 	if (res)
 		throw std::logic_error(fmt::format("Connection error : curl code = {}", res));
 	
-	
 	const std::string & response = rq.getResponse();
 	
 	if (!tk.fromJson(response))
@@ -151,10 +146,9 @@ CToken requestToken(const std::string & code, const CGetCredentialSettings & set
 	return tk;
 }
 
-static CCredentials getCredentials(const CToken & t)
+static CCredentials getCredentials(CRequest & rq, const CToken & t)
 {
 	LOGD(AUTH_LOG "get credentials ...");
-	CRequest rq;
 	
 	std::string headerResponse;
 	rq.addHeader("Accept", "application/json");
@@ -175,21 +169,21 @@ static CCredentials getCredentials(const CToken & t)
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-CCredentials getCredentials(const CGetCredentialSettings & settings)
+CCredentials getCredentials(const CGetCredentialSettings & settings, bool bVerbose)
 {
-
 	try {
+		CRequest rq(bVerbose);
+		const std::string rqCode = requestCode(rq, settings);           assert(!rqCode.empty());
+		sleep(2);
+		const std::string code= requestTokenCode(rq, rqCode, settings); assert(!code.empty());
 		
-		const std::string rqCode = requestCode(settings);           assert(!rqCode.empty());
-		const std::string code= requestTokenCode(rqCode, settings); assert(!code.empty());
-		
-		CToken token= requestToken(code, settings);
+		CToken token= requestToken(rq, code, settings);
 		if (!token.isValid()) {
 			LOGE(AUTH_LOG "invalid token");
 			exit( EXIT_FAILURE );
 		}
 		
-		CCredentials credentials =getCredentials(token);
+		CCredentials credentials =getCredentials(rq, token);
 		return credentials;
 		
 	}

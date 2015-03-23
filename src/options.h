@@ -61,6 +61,7 @@ public:
 public: // debug options
 	std::string _authToken;
 	std::string _authEndpoint;
+	bool        _curlVerbose;
 
 	
 protected:

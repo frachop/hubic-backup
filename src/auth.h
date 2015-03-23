@@ -36,17 +36,17 @@ struct CGetCredentialSettings
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-CCredentials getCredentials(const std::string & login, const std::string & pwd);
-CCredentials getCredentials(const CGetCredentialSettings & settings);
+CCredentials getCredentials(const std::string & login, const std::string & pwd, bool bVerbose);
+CCredentials getCredentials(const CGetCredentialSettings & settings, bool bVerbose);
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-inline CCredentials getCredentials(const std::string & login, const std::string & pwd)
+inline CCredentials getCredentials(const std::string & login, const std::string & pwd, bool bVerbose)
 {
 	CGetCredentialSettings s;
 	s._login = login;
 	s._pwd = pwd;
-	return getCredentials(s);
+	return getCredentials(s, bVerbose);
 }
 
 

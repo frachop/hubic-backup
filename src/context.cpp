@@ -24,10 +24,37 @@
 
 #include "context.h"
 
+
+//- /////////////////////////////////////////////////////////////////////////////////////////////////////////
+//- special sink to output errors on std::cerr stream 
+
+class CMySink
+:	public spdlog::sinks::base_sink<std::mutex>
+{
+public:
+    CMySink() {}
+    CMySink(const CMySink&) = delete;
+    CMySink& operator=(const CMySink&) = delete;
+    virtual ~CMySink() = default;
+
+protected:
+    virtual void _sink_it(const spdlog::details::log_msg& msg) override
+    {
+		std::ostream & o = (msg.level >= 5) ? std::cerr : std::cout;
+        o.write(msg.formatted.data(), msg.formatted.size());
+        o.flush();
+    }
+};
+
+
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 CContext::CContext(int argc, char ** argv)
-:	_console(spdlog::stdout_logger_mt(configConsoleName))
+:	_console(
+		spdlog::create<CMySink>(configConsoleName)
+		//spdlog::stderr_logger_mt(configConsoleName)
+		//spdlog::stdout_logger_mt(configConsoleName)
+	)
 ,	_options(nullptr)
 ,	_aborted(false) 
 {
@@ -42,7 +69,7 @@ bool CContext::getCredentials()
 {
 	assert( _options);
 	if (_options->_authToken.empty())
-		_cr = ::getCredentials(_options->_hubicLogin, _options->_hubicPassword);
+		_cr = ::getCredentials(_options->_hubicLogin, _options->_hubicPassword, _options->_curlVerbose);
 	
 	else {
 		//const std::string s = R"c(
@@ -55,3 +82,13 @@ bool CContext::getCredentials()
 	}
 	return true;
 }
+
+void CContext::abort()
+{
+	if (_aborted)
+		return;
+	
+	LOGI("Aborting all process");
+	_aborted = true;
+}
+

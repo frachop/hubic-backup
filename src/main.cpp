@@ -181,7 +181,7 @@ CRemoteMd5Process::CRemoteMd5Process(CContext & ctx, const CRemoteLs & remoteLs)
 
 bool CRemoteMd5Process::process(CAsset * p)
 {
-	CRequest rq;
+	CRequest rq(_ctx._options->_curlVerbose);
 	if (p->childCount() == 0)
 	{
 		if ( _remoteLs.exists( p->getRelativePath()) )
