@@ -34,6 +34,7 @@ class CUploader
 {
 public:
 	CUploader(CContext & ctx);
+	~CUploader();
 	bool upload(CAsset * p);
 
 private:
@@ -53,6 +54,10 @@ private:
 	std::size_t   _totalReaded; // for encryption progress
 	std::size_t   _totalUploaded;
 
+	bool _bStarting;
 	bool _bDone;
+	
+	CCryptoContext * _cryptoContext;
+	
 };
 

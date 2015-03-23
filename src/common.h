@@ -24,6 +24,21 @@
 
 #pragma once
 
+//- /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#define HUBACK_NAME "hubic-backup"
+#define HUBACK_VERSION_MAJOR "0"
+#define HUBACK_VERSION_MINOR "1"
+#define HUBACK_VERSION HUBACK_VERSION_MAJOR "." HUBACK_VERSION_MINOR
+
+//- /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+constexpr int numThread_upload   = 5;
+constexpr int numThread_localMd5 = 2;
+constexpr int numThread_remoteMd5= 2;
+
+//- /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 #include <unistd.h>
 #include <ctype.h>
 #include <cassert>
@@ -67,5 +82,6 @@ namespace spdlog {
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-constexpr const char * metaMd5BeforeCrypted= "X-Object-Meta-src-md5";
+constexpr const char * metaUncryptedMd5= "X-Object-Meta-UncryptedMd5";
+constexpr const char * metaUncryptedLen= "X-Object-Meta-UncryptedLen";
 

@@ -29,6 +29,7 @@
 CContext::CContext(int argc, char ** argv)
 :	_console(spdlog::stdout_logger_mt(configConsoleName))
 ,	_options(nullptr)
+,	_aborted(false) 
 {
 	_console->set_pattern("[%H:%M:%S.%e%L] %v");
 #ifndef NDEBUG

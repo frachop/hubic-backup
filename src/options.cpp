@@ -49,7 +49,7 @@ COptions::COptions()
 ,	_excludes()
 ,	_dstContainer()
 ,	_dstFolder()
-,	_cryptoContext(nullptr)
+,	_cryptoPassword()
 {
 }
 
@@ -285,7 +285,7 @@ bool COptionsPriv::parse(int ac, char** av)
 		
 		if (exists(EOptionFlag::Version)) {
 			std::cout
-				//<< boost::filesystem::path(av[0]).filename().string() << " v" << getVersionString()
+				<< boost::filesystem::path(av[0]).filename().string() << " v" << HUBACK_VERSION
 				//<< std::endl
 				//<< "   Git commit Id : " << getGitCommitIdString()
 				<< std::endl;
@@ -329,12 +329,8 @@ bool COptionsPriv::parse(int ac, char** av)
 		CHECK_MANDATORY_ARG(EOptionFlag::dstFolder);
 		_dstFolder = at(EOptionFlag::dstFolder).as<std::string>();
 
-		if (exists( EOptionFlag::cryptPassword)) {
-			const std::string cryptPassword = at(EOptionFlag::cryptPassword).as<std::string>();
-			assert( _cryptoContext == nullptr );
-			_cryptoContext = CCryptoContext::create(cryptPassword);
-			assert(_cryptoContext);
-		}
+		if (exists( EOptionFlag::cryptPassword)) 
+			_cryptoPassword = at(EOptionFlag::cryptPassword).as<std::string>();
 
 	}
 	catch (const std::exception & e)
@@ -350,6 +346,7 @@ bool COptionsPriv::parse(int ac, char** av)
 	
 #define S_LIB "{:15s}:"
 	LOGI("program started");
+	LOGI("version {}", HUBACK_VERSION);
 	//LOGI("{} v{}", boost::filesystem::path(av[0]).filename().string(), getVersionString());
 	//LOGI("Git commit Id : %s", getGitCommitIdString().c_str());
 	LOGI("with settings :");

@@ -37,6 +37,7 @@ protected: // callback
 	virtual void onStart() {}
 	virtual void onNewAsset(CAsset * ) {}
 	virtual void onDone() {}
+	virtual bool abort() { return false; }
 
 protected:
 	CAsset * _root;

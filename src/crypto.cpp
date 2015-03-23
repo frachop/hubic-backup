@@ -128,8 +128,12 @@ private:
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+
 bool CCryptoContextImpl::init( const std::string & pass)
 {
+	static std::mutex _m;
+	
+	_m.lock();
 	OpenSSL_add_all_algorithms();
 	
 	const EVP_CIPHER *cipher;
@@ -152,6 +156,7 @@ bool CCryptoContextImpl::init( const std::string & pass)
 	//printf("IV: "); for(int i=0; i<cipher->iv_len; ++i) { printf("%02x", iv[i]); } printf("\n");
 	
 	EVP_cleanup();
+	_m.unlock();
 	return true;
 }
 

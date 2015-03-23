@@ -45,6 +45,7 @@ public:
 
 private:
 	void parse();
+	virtual bool abort() override;
 	
 protected:
 	virtual void onStart() override;
@@ -99,6 +100,11 @@ void CMySourceParser::onDone()
 	_ctx._remoteMd5Queue.setDone();
 }
 
+bool CMySourceParser::abort()
+{
+	return _ctx.aborted();
+}
+
 void CMySourceParser::parse()
 {
 	try
@@ -122,6 +128,7 @@ public:
 	CLocalMd5Process(CContext & ctx);
 
 private:
+	virtual bool abort() override { return _ctx.aborted(); }
 	virtual bool process(CAsset * p) override;
 };
 
@@ -156,7 +163,8 @@ public:
 	CRemoteMd5Process(CContext & ctx, const CRemoteLs & remoteLs);
 
 protected:
-	 virtual bool process(CAsset * p) override;
+	virtual bool process(CAsset * p) override;
+	virtual bool abort() override { return _ctx.aborted(); }
 
 private:
 	const CRemoteLs & _remoteLs;
@@ -188,17 +196,18 @@ bool CRemoteMd5Process::process(CAsset * p)
 			if (rq.getHttpResponseCode() == 200) {
 			
 				CHash h;
-				const std::string md5BeforeCrypted = rq.getResponseHeaderField(metaMd5BeforeCrypted);
-				if (md5BeforeCrypted.empty()) {
+				const std::string uncryptedMd5 = rq.getResponseHeaderField(metaUncryptedMd5);
+				if (uncryptedMd5.empty()) {
 					h._md5 = NMD5::CDigest::fromString(rq.getResponseHeaderField("Etag"));
+					h._len = atoll( rq.getResponseHeaderField("Content-Length").c_str() );
 				} else {
-					h._md5 = NMD5::CDigest::fromString(md5BeforeCrypted);
+					h._md5 = NMD5::CDigest::fromString(uncryptedMd5);
+					h._len = atoll( rq.getResponseHeaderField(metaUncryptedLen).c_str() );
 				}
 
-				h._len = atoll( rq.getResponseHeaderField("Content-Length").c_str() );
 				h._computed = true;
 				p->setDstHash(h);
-				p->setCrypted(!md5BeforeCrypted.empty());
+				p->setCrypted(!uncryptedMd5.empty());
 				
 				//LOGD("{} {} [{}]", p->getRelativePath().string(), h._len, h._md5.hex());
 				
@@ -252,8 +261,7 @@ CSynchronizer::~CSynchronizer()
 void CSynchronizer::start()
 {
 	assert( _threads.empty() );
-	constexpr int cnt = 1;
-	for (int i=0; i<cnt; ++i)
+	for (int i=0; i<numThread_upload; ++i)
 		_threads.push_back( std::thread( &CSynchronizer::run, this) );
 }
 
@@ -326,7 +334,8 @@ void CSynchronizer::run()
 			{
 				
 				LOGD("UPLOAD '{}'", p->getRelativePath().string());
-				uploader.upload(p);
+				if (!uploader.upload(p))
+					_ctx.abort();
 				
 			} else {
 				
@@ -341,11 +350,14 @@ void CSynchronizer::run()
 				} else {
 				
 					LOGD("REPLACE '{}'", p->getRelativePath().string());
-					uploader.upload(p);
+					if (!uploader.upload(p))
+						_ctx.abort();
 				}
 			}
 		}
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		if (_ctx.aborted())
+			break;
 	}
 	
 	LOGD("{} DONE", __PRETTY_FUNCTION__);
@@ -370,10 +382,10 @@ int main(int argc, char ** argv)
 	
 	remoteLs.start();
 	srcParser.start();
-	md5LocalEngine.start(1);
+	md5LocalEngine.start(numThread_localMd5);
 
 	remoteLs.waitForDone();
-	md5RemoteEngine.start(1);
+	md5RemoteEngine.start(numThread_remoteMd5);
 	synchronizer.start();
 	
 	srcParser.waitDone();

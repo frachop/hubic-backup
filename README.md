@@ -2,14 +2,13 @@
 
 [Hubic](http://hubic.com) backup command line tool for linux & OSX
 
-For the moment only in pre-alpha.
-
 ##Features:
 
 * Exclude files using wildcards
 * encrypt (openssl interop)
 * upload only modified files
 * logging support using excellent [spdlog](https://github.com/gabime/spdlog) library
+* multi threading support
 
 ##Dependencies
 

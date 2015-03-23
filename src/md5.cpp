@@ -91,6 +91,11 @@ namespace NMD5 {
 		return (*this);
 	}
 
+	void CDigest::clear()
+	{
+		memset( _data,0,sizeof(_data));
+	}
+
 	bool CDigest::isValid() const
 	{
 		for (int i=0; i<DIGEST_LENGTH; ++i)
@@ -143,6 +148,7 @@ namespace NMD5 {
 			return false;
 		}
 
+		_result.clear();
 		_p = new CImpl;
 		return _p->init();
 	}

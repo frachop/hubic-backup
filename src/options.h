@@ -30,7 +30,6 @@
 #include <set>
 #include <stdint.h>
 #include <boost/filesystem.hpp>
-#include "crypto.h"
 
 //- ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -46,7 +45,7 @@ public:
 	char** _argv;
 	
 public:
-	bool crypted() const { return _cryptoContext; }
+	bool crypted() const { return !_cryptoPassword.empty(); }
 
 public:
 	std::string  _hubicLogin;
@@ -57,7 +56,7 @@ public:
 	std::string             _dstContainer;
 	boost::filesystem::path _dstFolder;
 	
-	CCryptoContext * _cryptoContext;
+	std::string _cryptoPassword;
 	
 public: // debug options
 	std::string _authToken;

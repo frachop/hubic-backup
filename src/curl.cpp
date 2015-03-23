@@ -127,7 +127,7 @@ void CRequest::setPostData(const std::string & data)
 
 std::string CRequest::getResponseHeaderField(const std::string & key) const
 {
-	const std::string k = boost::algorithm::trim_copy(key);
+	const std::string k = boost::algorithm::to_lower_copy(boost::algorithm::trim_copy(key));
 	if (k.empty())
 		return std::string();
 	
@@ -150,7 +150,7 @@ static void parseResponseHeader( std::map<std::string, std::string> & headerMap,
 		if (i == std::string::npos)
 			continue;
 		
-		const std::string left = boost::algorithm::trim_copy(line.substr(0,i));
+		const std::string left = boost::algorithm::to_lower_copy(boost::algorithm::trim_copy(line.substr(0,i)));
 		const std::string right= boost::algorithm::trim_copy(line.substr(i+1));
 		if (left.empty())
 			continue;

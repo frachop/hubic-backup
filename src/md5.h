@@ -44,6 +44,7 @@ namespace NMD5
 		CDigest();
 		CDigest(const CDigest & src);
 		CDigest & operator=(const CDigest & src);
+		void clear();
 
 		bool isValid() const;
 		bool operator == (const CDigest & src) const;

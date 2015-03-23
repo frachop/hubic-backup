@@ -33,7 +33,15 @@ CUploader::CUploader(CContext & ctx)
 ,	_f(nullptr)
 ,	_totalReaded(0)
 ,	_totalUploaded(0)
+,	_bStarting(false)
+,	_bDone(false)
+,	_cryptoContext(nullptr)
 {
+}
+
+CUploader::~CUploader()
+{
+	delete _cryptoContext;
 }
 
 size_t CUploader::_rdd(void *ptr, size_t size, size_t nmemb, void * _p)
@@ -51,30 +59,30 @@ size_t CUploader::rdd(uint8_t *pDst, size_t size, size_t nmemb)
 	std::size_t uploaded= 0;
 	if (!crypted())
 	{
+		if (_bStarting)
+			_bStarting = false;
 		uploaded= fread(pDst,size,nmemb,_f);
 		_bDone = feof(_f);
 		
 	} else {
-		if (_crt->getRelativePath().filename().string() == "._HelloKitty3.jpeg")
-		{
-			LOGD("");
-		}
-
-
 		std::vector<uint8_t> cryptedData;
-		if (_totalUploaded == 0) {
+		if (_bStarting) {
+
+			assert( _totalUploaded == 0);
+			assert( _cryptoContext );
 			
-			_cryptor.encryptStart(cryptedData, _ctx._options->_cryptoContext);
+			LOGD("upload starting ... '{}'", _crt->getRelativePath().string());
+			_cryptor.encryptStart(cryptedData, _cryptoContext);
 			memcpy( pDst + uploaded, cryptedData.data(), cryptedData.size());
 			
-			_md5EncComputer.init();
 			_md5EncComputer.feed(pDst + uploaded, cryptedData.size());
 			uploaded+= cryptedData.size();
+			_bStarting = false;
 		}
 		
-		std::vector<uint8_t> readedData(std::max(size*nmemb / 2, size_t(1)));
+		std::vector<uint8_t> readedData(std::max((2*size*nmemb) / 3, size_t(1)));
 		const std::size_t readed = fread(readedData.data(),size,readedData.size(),_f);
-		_bDone = feof(_f);
+		_bDone = feof(_f) || readed == 0;
 		readedData.resize(readed);
 		
 		if (!readedData.empty()) {
@@ -95,8 +103,6 @@ size_t CUploader::rdd(uint8_t *pDst, size_t size, size_t nmemb)
 				uploaded+= cryptedData.size();
 			}
 			
-			_md5EncComputer.done();
-			LOGD("md5 encrypted '{}' = '{}'", _crt->getRelativePath().string(), _md5EncComputer.getDigest().hex());
 		}
 		
 		_totalReaded += readed;
@@ -105,7 +111,7 @@ size_t CUploader::rdd(uint8_t *pDst, size_t size, size_t nmemb)
 	
 	const CHash h = _crt->getSrcHash();
 	const std::size_t prc = std::min( static_cast<std::size_t>(100), (100*_totalUploaded)/std::max(std::size_t(1),h._len));
-	LOGD(" {}% [ {} / {} ] uploaded", prc, std::min(h._len, _totalUploaded), h._len );
+	LOGT(" {}% [ {} / {} ] uploaded", prc, std::min(h._len, _totalUploaded), h._len );
 	
 	_totalUploaded += uploaded;
 	return uploaded;
@@ -135,7 +141,8 @@ bool CUploader::upload(CAsset * p)
 	} else {
 		// crypted
 		_rq.addHeader("Content-Type", "application/octet-stream");
-		_rq.addHeader(metaMd5BeforeCrypted, p->getSrcHash()._md5.hex());
+		_rq.addHeader(metaUncryptedMd5, p->getSrcHash()._md5.hex());
+		_rq.addHeader(metaUncryptedLen, fmt::format("{}", p->getSrcHash()._len));
 	}
 	
 	_f = fopen(p->getFullPath().c_str(), "rb");
@@ -146,18 +153,38 @@ bool CUploader::upload(CAsset * p)
 	
 	_crt = p;
 	_totalReaded= _totalUploaded= 0;
+	_bStarting = true;
 	_bDone = false;
+	_md5EncComputer.init();
 	
+	if (crypted()) {
+		assert( _cryptoContext == nullptr );
+		// create one context for each upload so the salt will be regenerated !
+		_cryptoContext = CCryptoContext::create(_ctx._options->_cryptoPassword);
+	}
+
 	_rq.put(url);
+
+	if (_cryptoContext) {
+		delete _cryptoContext;
+		_cryptoContext = nullptr;
+
+		_md5EncComputer.done();
+		LOGD("md5 encrypted '{}' = '{}'", _crt->getRelativePath().string(), _md5EncComputer.getDigest().hex());
+	}
 
 	fclose(_f);
 	_f = nullptr;
 	_crt = nullptr;
 	
+	if (_rq.getHttpResponseCode() != 201)
+	{
+		LOGE("Error uploading '{}' [http response : {}]", url, _rq.getHttpResponseCode());
+		return false;
+	}
 	
-	bool bOk = _rq.getHttpResponseCode() == 201;
-	if (!crypted() || (!bOk))
-		return bOk;
+	if (!crypted())
+		return true;
 	
 	// Check encrypted md5 file
 	_rq.addHeader("X-Auth-Token", _ctx._cr.token());

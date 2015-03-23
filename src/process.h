@@ -44,6 +44,7 @@ public:
 
 protected:
 	virtual bool process( CAsset * p ) = 0;
+	virtual bool abort() { return false; }
 	
 private:
 	void run();

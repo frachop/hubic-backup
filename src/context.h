@@ -40,6 +40,8 @@ class CContext
 public:
 	CContext(int argc, char ** argv);
 	bool getCredentials();
+	bool aborted() { return _aborted; }
+	void abort() { _aborted = true; }
 
 public:
 	const COptions * _options;
@@ -54,6 +56,7 @@ public:
 private:
 	CCurlLibrary _curlLib;
 	std::shared_ptr<spdlog::logger> _console;
+	std::atomic_bool _aborted;
 };
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////

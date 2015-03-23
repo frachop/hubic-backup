@@ -66,6 +66,8 @@ void CProcess::run()
 			_dstQueue.add(p);
 		}
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		if (abort())
+			break;
 	}
 	_doneCount++;
 	if (_doneCount == _threads.size())

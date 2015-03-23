@@ -69,6 +69,8 @@ void CRemoteLs::run()
 	{
 		const boost::filesystem::path relPath = makeRel(dstFolder, line);
 		_paths.insert(relPath);
+		if (_ctx.aborted())
+			return;
 	}
 
 	LOGD("Destination file list build [ {} files ] ", _paths.size());

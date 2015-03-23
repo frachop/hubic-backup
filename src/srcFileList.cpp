@@ -67,7 +67,7 @@ void CSourceParser::parse(const boost::filesystem::path & src, const std::set<st
 void CSourceParser::parseRec(CAsset * pCrt, const std::set<std::string> & excludeList)
 {
 	assert( pCrt );
-	if (!pCrt->isFolder())
+	if (!pCrt->isFolder() || abort())
 		return;
 
 	namespace bf= boost::filesystem;
@@ -75,7 +75,7 @@ void CSourceParser::parseRec(CAsset * pCrt, const std::set<std::string> & exclud
 	const bf::path root = pCrt->getRoot();
 	
 	bf::directory_iterator end_iter;
-	for	( bf::directory_iterator dir_iter(crt) ; dir_iter != end_iter ; ++dir_iter)
+	for	( bf::directory_iterator dir_iter(crt) ; (!abort()) && dir_iter != end_iter ; ++dir_iter)
 	{
 		const bf::path f = dir_iter->path();
 		const bf::path rel = makeRel(root, f);
