@@ -62,6 +62,7 @@ public:
 	void generate();
 	void set(const unsigned char* src);
 	uint8_t operator[](std::size_t i) const { assert( i < LENGTH); return _key[i]; }
+	std::string hex() const;
 	
 public:
 	operator const unsigned char*() const { return _key; }
@@ -72,6 +73,15 @@ private:
 };
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+template<unsigned char SIZE>
+inline std::string CTRandomBytes<SIZE>::hex() const
+{
+	std::string res;
+	for (int i=0; i<LENGTH; ++i)
+		res += fmt::format("{:02x}", static_cast<int>(_key[i]));
+	return res;
+}
 
 template<unsigned char SIZE>
 inline CTRandomBytes<SIZE>::CTRandomBytes() { generate(); }
@@ -115,9 +125,9 @@ inline void CTRandomBytes<SIZE>::generate() {
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-typedef CTRandomBytes<8> CSalt;
-typedef CTRandomBytes<EVP_MAX_KEY_LENGTH> CKey;
-typedef CTRandomBytes<EVP_MAX_IV_LENGTH > CInitialValue;
+typedef CTRandomBytes< 8> CSalt;
+typedef CTRandomBytes<32> CKey;
+typedef CTRandomBytes<16> CInitialValue;
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -148,8 +158,8 @@ NMD5::CDigest getCryptoKey(const std::string & pwd)
 	c.init( pwd, false );
 	return NMD5::computeMd5(
 		fmt::format(cKeySaltFormat,
-			NMD5::computeMd5(c.key(), CKey::LENGTH).hex(),
-			NMD5::computeMd5(c.iv(), CInitialValue::LENGTH).hex()
+			c.key().hex(),
+			c.iv().hex()
 		)
 	);
 }
