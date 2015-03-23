@@ -156,7 +156,7 @@ bool CUploader::upload(CAsset * p)
 		_rq.addHeader("Content-Type", "application/octet-stream");
 		_rq.addHeader(metaUncryptedMd5, p->getSrcHash()._md5.hex());
 		_rq.addHeader(metaUncryptedLen, fmt::format("{}", p->getSrcHash()._len));
-		_rq.addHeader(metaCryptoKey   , _ctx._cryptoKey.hex());
+		_rq.addHeader(metaCryptoKey   , _ctx._options->_cryptoKey.hex());
 	}
 	
 	_f = fopen(p->getFullPath().c_str(), "rb");

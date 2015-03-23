@@ -350,7 +350,7 @@ void CSynchronizer::run()
 					if (_ctx.crypted())
 					{
 						// check if password changed
-						if (_ctx._cryptoKey != p->getRemoteCryptoKey() ) {
+						if (_ctx._options->_cryptoKey != p->getRemoteCryptoKey() ) {
 							LOGD("REPLACE PASSWORD CHANGED '{}'", p->getRelativePath().string());
 							if (!uploader.upload(p))
 								_ctx.abort();

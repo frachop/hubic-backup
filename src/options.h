@@ -30,6 +30,7 @@
 #include <set>
 #include <stdint.h>
 #include <boost/filesystem.hpp>
+#include "md5.h"
 
 //- ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -57,6 +58,7 @@ public:
 	boost::filesystem::path _dstFolder;
 	
 	std::string _cryptoPassword;
+	NMD5::CDigest _cryptoKey;
 	
 public: // debug options
 	std::string _authToken;

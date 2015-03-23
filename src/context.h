@@ -54,7 +54,6 @@ public:
 	CTQueue<CAsset> _remoteMd5Queue;
 	CTQueue<CAsset> _remoteMd5DoneQueue;
 
-	NMD5::CDigest _cryptoKey;
 
 private:
 	CCurlLibrary _curlLib;

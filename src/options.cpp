@@ -26,6 +26,7 @@
 
 #include "options.h"
 #include "common.h"
+#include "crypto.h"
 
 //* ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -335,8 +336,10 @@ bool COptionsPriv::parse(int ac, char** av)
 		CHECK_MANDATORY_ARG(EOptionFlag::dstFolder);
 		_dstFolder = at(EOptionFlag::dstFolder).as<std::string>();
 
-		if (exists( EOptionFlag::cryptPassword)) 
+		if (exists( EOptionFlag::cryptPassword)) {
 			_cryptoPassword = at(EOptionFlag::cryptPassword).as<std::string>();
+			_cryptoKey = getCryptoKey(_cryptoPassword);
+		}
 
 		if (count("curl-verbose")) {
 			_curlVerbose = (po::variables_map::at( "curl-verbose" ).as<std::string>() == "on");
@@ -367,6 +370,8 @@ bool COptionsPriv::parse(int ac, char** av)
 	LOGI(S_LIB " {}", "Container", _dstContainer);
 	LOGI(S_LIB " {}", "Destination", _dstFolder);
 	LOGI(S_LIB " {}", "Crypted ?", crypted() ? "yes" : "no");
+	if (crypted())
+		LOGI(S_LIB " {}", "Cryptokey", _cryptoKey.hex());
 
 	return true;
 }
