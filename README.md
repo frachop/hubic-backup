@@ -21,7 +21,16 @@
 | [boost-program-options](http://www.boost.org/doc/libs/1_57_0/doc/html/program_options.html) | ```libboost-program-options-dev``` | 
 | [jsoncpp](http://open-source-parsers.github.io/jsoncpp-docs/doxygen/index.html) | ```libjsoncpp-dev``` | 
 
-## Usage
+##Setup
+###Linux (ubuntu)
+
+* clone sources files ```git clone https://github.com/frachop/hubic-backup.git```
+* install dependencies ```sudo apt-get install libboost-system-dev libcurl4-openssl-dev libboost-filesystem-dev libboost-regex-dev libboost-program-options-dev libjsoncpp-dev```
+* launch automake ```aclocal && automake && autonconf```
+* build sources ```./configure && make all```
+* use the binary file which path is ```src/hubic-backup```
+ 
+##Usage
 
 ###Description :
 
@@ -48,7 +57,6 @@ destination:
   -o [ --dst ] arg                   destination folder
   -k [ --crypt-password ] arg        optional crypto password
 ```
-
 ###Simple example :
 
 ```
