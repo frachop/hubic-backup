@@ -5,10 +5,11 @@
 ##Features:
 
 * Exclude files using wildcards
-* aes 256bits encryption (openssl interop)
-* upload only modified files
-* logging support using excellent [spdlog](https://github.com/gabime/spdlog) library
-* multi threading support
+* Aes 256bits encryption (openssl interop)
+* Upload only modified files
+* Logging support using excellent [spdlog](https://github.com/gabime/spdlog) library
+* Multi threading support
+* Incremental backup 
 
 ##Limitations
 
