@@ -5,10 +5,14 @@
 ##Features:
 
 * Exclude files using wildcards
-* encrypt (openssl interop)
+* aes 256bits encryption (openssl interop)
 * upload only modified files
 * logging support using excellent [spdlog](https://github.com/gabime/spdlog) library
 * multi threading support
+
+##Limitations
+
+* [Large objects](http://docs.openstack.org/developer/swift/overview_large_objects.html) unsupported yet
 
 ##Dependencies
 
@@ -79,3 +83,6 @@ Example of exclude file:
 tmp*
 ?tmpDir
 ```
+
+To restore files, use any swift client or hubic browser interface. Then, if files are encrypted, use the command line : ```openssl enc -aes-256-cbc -d -in <source path> -out <destination path> -k <password>``` to decrypt it.
+
