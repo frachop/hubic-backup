@@ -82,7 +82,7 @@ namespace NMD5
 
 	//- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	bool computeFileMd5(CDigest & res, const std::string &path, std::size_t * fileSize);
+	bool computeFileMd5(CDigest & res, const std::string &path, uint64_t * fileSize);
 	CDigest computeMd5(const void* data, std::size_t len);
 	inline CDigest computeMd5(const std::string &content) { return computeMd5(reinterpret_cast<const void*>(content.c_str()), content.length()); }
 	inline CDigest computeMd5(const std::vector<uint8_t> & content) { return computeMd5( reinterpret_cast<const void*>(content.data()), content.size()); }

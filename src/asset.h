@@ -40,7 +40,7 @@ struct CHash
 	bool operator==(const CHash & h) const { assert( _computed && h._computed); return (_len == h._len) && (_md5 == h._md5); }
 	
 	bool          _computed;
-	std::size_t   _len;
+	uint64_t      _len;
 	NMD5::CDigest _md5;
 };
 

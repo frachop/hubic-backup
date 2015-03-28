@@ -180,7 +180,7 @@ namespace NMD5 {
 
 	//- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	bool computeFileMd5(CDigest & res, const std::string &path, std::size_t * fileSize)
+	bool computeFileMd5(CDigest & res, const std::string &path, uint64_t * fileSize)
 	{
 		if (fileSize)
 			*fileSize = 0;
@@ -196,7 +196,7 @@ namespace NMD5 {
 		std::vector<uint8_t> buffer(1024*1024*1);
 		for (;;)
 		{
-			const std::size_t readed = fread(buffer.data(),1,buffer.size(), f);
+			const uint64_t readed = fread(buffer.data(),1,buffer.size(), f);
 			if (readed == 0) {
 				if (ferror(f)) {
 				

@@ -130,6 +130,7 @@ public:
 private:
 	virtual bool abort() override { return _ctx.aborted(); }
 	virtual bool process(CAsset * p) override;
+
 };
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -145,10 +146,47 @@ bool CLocalMd5Process::process( CAsset * p)
 	bool bRes(true);
 	if (!p->isFolder()) {
 		
+		
+		const uint64_t sz= boost::filesystem::file_size(p->getFullPath());
+		if (sz >= fileSizeMax) {
+			LOGE("file '{}' is more than 5Go.", p->getFullPath());
+			_ctx.abort();
+			return false;
+		}
+		
+		FILE* f = fopen( p->getFullPath().c_str(), "rb");
+		if (f == nullptr) {
+			LOGE("file open error '{}'", p->getFullPath());
+			_ctx.abort();
+			return false;
+		}
+		
+		NMD5::CComputer c;
+		c.init();
+		uint64_t reste( sz );
+		std::vector<uint8_t> buffer(1024*1024*1); // 1Mo
+		while (reste && (!abort()))
+		{
+			const uint64_t readed = fread(buffer.data(),1,buffer.size(), f);
+			if (ferror( f )) {
+				fclose(f);
+				LOGE("file read error '{}'", p->getFullPath());
+				_ctx.abort();
+				return false;
+			}
+			
+			reste -= readed;
+			if (readed)
+				c.feed( buffer.data(), readed);
+		}
+		c.done();
+		fclose(f);
+		
 		//LOGD("computing md5 of {}", p->getFullPath().string());
 		CHash h;
-		// TODO: Check Error on compute MD5 failed !! 
-		h._computed= NMD5::computeFileMd5(h._md5, p->getFullPath().string(), &h._len);
+		h._computed= true;
+		h._len = sz;
+		h._md5 = c.getDigest();
 		p->setSrcHash(h);
 	}
 	return bRes;
@@ -215,6 +253,7 @@ bool CRemoteMd5Process::process(CAsset * p)
 				
 			} else {
 				LOGE("{} bad response code : {} [{}]", __PRETTY_FUNCTION__, rq.getHttpResponseCode(), url);
+				_ctx.abort();
 				return false;
 			}
 		}

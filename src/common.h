@@ -87,3 +87,6 @@ constexpr const char * metaUncryptedLen= "X-Object-Meta-Hubk-UncryptedLen";
 constexpr const char * metaVersion     = "X-Object-Meta-Hubk-Version";
 constexpr const char * metaCryptoKey   = "X-Object-Meta-Hubk-Cryptokey";
 
+//- /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+constexpr uint64_t fileSizeMax = 5368709120ULL; // 5 Go = 5*1024*1024*1024

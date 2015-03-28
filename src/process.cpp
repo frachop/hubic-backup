@@ -62,7 +62,8 @@ void CProcess::run()
 	{
 		CAsset * p = _srcQueue.get();
 		if (p) {
-			process(p);
+			if (!process(p))
+				break;
 			_dstQueue.add(p);
 		}
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));

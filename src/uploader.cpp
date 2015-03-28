@@ -110,7 +110,7 @@ size_t CUploader::rdd(uint8_t *pDst, size_t size, size_t nmemb)
 	}
 	
 	const CHash h = _crt->getSrcHash();
-	const std::size_t prc = std::min( static_cast<std::size_t>(100), (100*_totalUploaded)/std::max(std::size_t(1),h._len));
+	const uint64_t prc = std::min( static_cast<uint64_t>(100), (100*_totalUploaded)/std::max(uint64_t(1),h._len));
 	LOGT(" {}% [ {} / {} ] uploaded", prc, std::min(h._len, _totalUploaded), h._len );
 	
 	_totalUploaded += uploaded;

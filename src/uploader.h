@@ -52,8 +52,8 @@ private:
 	NMD5::CComputer _md5EncComputer;
 
 	FILE        * _f;
-	std::size_t   _totalReaded; // for encryption progress
-	std::size_t   _totalUploaded;
+	uint64_t   _totalReaded; // for encryption progress
+	uint64_t   _totalUploaded;
 
 	bool _bStarting;
 	bool _bDone;
