@@ -53,7 +53,7 @@ public:
 	CTQueue<CAsset> _localMd5DoneQueue;
 	CTQueue<CAsset> _remoteMd5Queue;
 	CTQueue<CAsset> _remoteMd5DoneQueue;
-
+	CTQueue<CAsset> _todoQueue;
 
 private:
 	CCurlLibrary _curlLib;

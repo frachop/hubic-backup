@@ -44,6 +44,20 @@ struct CHash
 	NMD5::CDigest _md5;
 };
 
+//- /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+enum class BACKUP_ITEM_STATUS
+{
+	UNKNOWN,
+	IS_A_FOLDER,
+	UP_TO_DATE,
+	IGNORED,
+	TO_BE_DELETED,
+	TO_BE_CREATED,
+	UPDATE_CONTENT_CHANGED,
+	UPDATE_PWD_CHANGED
+};
+
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -84,12 +98,16 @@ public:
 	bool isCrypted() { return _crypted; }
 	void setCrypted(bool c) { _crypted = c; }
 
+public:
+	BACKUP_ITEM_STATUS getBackupStatus() const { return _backupStatus; }
+	void setBackupStatus(BACKUP_ITEM_STATUS s) { _backupStatus = s; }
+
 private:
 	CAsset * _parent;
 	std::vector<CAsset*> _childs;
 	
 private:
-	bool  _isFolder;
+	bool _isFolder;
 	
 	std::mutex _srcHashMutex;
 	CHash _srcHash;
@@ -98,6 +116,8 @@ private:
 	std::atomic_bool _crypted;
 	CHash _dstHash;
 	NMD5::CDigest _remoteCryptoKey;
+	
+	std::atomic<BACKUP_ITEM_STATUS> _backupStatus;
 };
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////

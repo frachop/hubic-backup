@@ -57,6 +57,7 @@ CAsset::CAsset(CAsset * parent, const std::string & name, bool bFolder)
 ,	_srcHash()
 ,	_crypted(false)
 ,	_dstHash()
+,	_backupStatus(BACKUP_ITEM_STATUS::UNKNOWN)
 {
 	if (parent) {
 		assert( parent->childByName(_name) == nullptr );

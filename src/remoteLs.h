@@ -38,6 +38,7 @@ public:
 	void start();
 	void waitForDone();
 	bool exists(const boost::filesystem::path & p) const { return _paths.find(p) != _paths.end(); }
+	const std::set<boost::filesystem::path> & paths() const { return _paths; }
 	
 private:
 	void run();

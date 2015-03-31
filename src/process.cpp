@@ -71,6 +71,8 @@ void CProcess::run()
 			break;
 	}
 	_doneCount++;
-	if (_doneCount == _threads.size())
+	if (_doneCount == _threads.size()) {
 		_dstQueue.setDone();
+		onDone();
+	}
 }

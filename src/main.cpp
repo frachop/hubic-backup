@@ -130,6 +130,7 @@ public:
 private:
 	virtual bool abort() override { return _ctx.aborted(); }
 	virtual bool process(CAsset * p) override;
+	virtual void onDone() override;
 
 };
 
@@ -192,6 +193,12 @@ bool CLocalMd5Process::process( CAsset * p)
 	return bRes;
 }
 
+void CLocalMd5Process::onDone()
+{
+	CProcess::onDone();
+	LOGD("Local MD5 compute processes done.");
+}
+
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class CRemoteMd5Process
@@ -204,6 +211,7 @@ public:
 protected:
 	virtual bool process(CAsset * p) override;
 	virtual bool abort() override { return _ctx.aborted(); }
+	virtual void onDone() override;
 
 private:
 	const CRemoteLs & _remoteLs;
@@ -261,15 +269,20 @@ bool CRemoteMd5Process::process(CAsset * p)
 	
 	return true;
 }
+void CRemoteMd5Process::onDone()
+{
+	CProcess::onDone();
+	LOGD("Remote MD5 reader processes done.");
+}
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class CSynchronizer
+class CBackupStatusUpdater
 :	public CContextual
 {
 public:
-	CSynchronizer(CContext & context, const CRemoteLs & remoteLs);
-	~CSynchronizer();
+	CBackupStatusUpdater(CContext & context, const CRemoteLs & remoteLs);
+	~CBackupStatusUpdater();
 
 	void start();
 	void waitDone();
@@ -280,15 +293,173 @@ private:
 
 private:
 	const CRemoteLs & _remoteLs;
+	std::thread _thread;
+};
+
+//- /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+CBackupStatusUpdater::CBackupStatusUpdater(CContext & ctx, const CRemoteLs & remoteLs)
+:	CContextual(ctx)
+,	_remoteLs(remoteLs)
+{
+}
+
+CBackupStatusUpdater::~CBackupStatusUpdater()
+{
+	waitDone();
+}
+
+void CBackupStatusUpdater::start()
+{
+	assert(!_thread.joinable());
+	_thread= std::thread( &CBackupStatusUpdater::run, this);
+}
+
+void CBackupStatusUpdater::waitDone()
+{
+	if (_thread.joinable())
+		_thread.join();
+}
+
+CAsset * CBackupStatusUpdater::getNext(bool & remoteExists)
+{
+	// helper class to lock and auto unlock
+	// localMd5Queue
+	struct CSafeLocalAssets
+	:	CContextual
+	{
+	public:
+		std::list<CAsset*> & _l;
+		
+		CSafeLocalAssets(CContext & ctx)
+		:	CContextual(ctx)
+		,	_l(ctx._localMd5DoneQueue.lock())
+		{}
+	
+		~CSafeLocalAssets() {
+			_ctx._localMd5DoneQueue.unlock();
+		}
+		
+		void erase(std::list<CAsset*>::iterator & i) {
+			_l.erase(i);
+		}
+		
+		
+	} localMd5DoneQueue(_ctx);
+
+	// find first local which is not a folder and md5 is computed and
+	// remote doesn't exists or remote md5 already readed
+	// whene found, remove it from the localMd5DoneQueue
+	
+	remoteExists = false;
+	for (auto l = localMd5DoneQueue._l.begin(); l != localMd5DoneQueue._l.end(); ++l)
+	{
+		CAsset * p( *l );
+		if (p->isFolder()) {
+			// folder . nothing to do;
+			localMd5DoneQueue.erase(l);
+			continue;
+		}
+		
+		assert( p->getSrcHash()._computed);
+		remoteExists = _remoteLs.exists( p->getRelativePath() );
+		if (!remoteExists) {
+		
+			// upload.
+			localMd5DoneQueue.erase(l);
+			return p;
+		
+		} else {
+		
+			if (p->getDstHash()._computed) {
+				
+				// skip it
+				localMd5DoneQueue.erase(l);
+				return p;
+
+			}
+		}
+	}
+	
+	return nullptr;
+}
+
+void CBackupStatusUpdater::run()
+{
+	CUploader uploader(_ctx);
+	CTQueue<CAsset> & localMd5Done = _ctx._localMd5DoneQueue;
+
+	bool remoteExists;
+	while ( (!localMd5Done.isEmpty()) || (!localMd5Done.done()) )
+	{
+		CAsset * p = getNext(remoteExists);
+		if (p) {
+			assert( !p->isFolder());
+			if (!remoteExists)
+			{
+				p->setBackupStatus(BACKUP_ITEM_STATUS::TO_BE_CREATED);
+				
+			} else {
+				
+				const CHash localH = p->getSrcHash();
+				const CHash remoteH= p->getDstHash();
+				assert( remoteH._computed && localH._computed );
+				
+				if (localH == remoteH)
+				{
+					if (_ctx.crypted())
+					{
+						// check if password changed
+						if (_ctx._options->_cryptoKey != p->getRemoteCryptoKey() )
+							p->setBackupStatus(BACKUP_ITEM_STATUS::UPDATE_PWD_CHANGED);
+						
+						else
+							p->setBackupStatus(BACKUP_ITEM_STATUS::UP_TO_DATE);
+						
+					} else // not crypted
+						p->setBackupStatus(BACKUP_ITEM_STATUS::UP_TO_DATE);
+
+				} else // md5 are differents
+					p->setBackupStatus(BACKUP_ITEM_STATUS::UPDATE_CONTENT_CHANGED);
+			}
+		
+			_ctx._todoQueue.add(p);
+		}
+		
+		if (_ctx.aborted())
+			break;
+		
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	}
+	
+	_ctx._todoQueue.setDone();
+	LOGD("{} DONE", __PRETTY_FUNCTION__);
+}
+
+//- /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class CSynchronizer
+:	public CContextual
+{
+public:
+	CSynchronizer(CContext & context);
+	~CSynchronizer();
+
+	void start();
+	void waitDone();
+
+private:
+	void run();
+
+private:
 	std::vector<std::thread> _threads;
 };
 
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-CSynchronizer::CSynchronizer(CContext & ctx, const CRemoteLs & remoteLs)
+CSynchronizer::CSynchronizer(CContext & ctx)
 :	CContextual(ctx)
-,	_remoteLs(remoteLs)
 {
 }
 
@@ -313,99 +484,50 @@ void CSynchronizer::waitDone()
 			t.join();
 }
 
-CAsset * CSynchronizer::getNext(bool & remoteExists)
+static std::string uploadLabel(BACKUP_ITEM_STATUS s)
 {
-	remoteExists = false;
-	
-	std::list<CAsset*> & local = _ctx._localMd5DoneQueue.lock();
-	
-	for (auto l = local.begin(); l != local.end(); ++l) {
-
-		CAsset * p( *l );
-		if (p->isFolder()) {
-			// folder . nothing to do;
-			local.erase(l);
-			_ctx._localMd5DoneQueue.unlock();
-			return p;
-		}
-		
-		assert( p->getSrcHash()._computed);
-		remoteExists = _remoteLs.exists( p->getRelativePath() );
-		if (!remoteExists) {
-		
-			// upload.
-			local.erase(l);
-			_ctx._localMd5DoneQueue.unlock();
-			return p;
-		
-		} else {
-		
-			if (p->getDstHash()._computed) {
-				
-				// skip it
-				local.erase(l);
-				_ctx._localMd5DoneQueue.unlock();
-				return p;
-			
-			}
-		}
+	switch ( s ) {
+		case BACKUP_ITEM_STATUS::UPDATE_CONTENT_CHANGED: return "Uploading content changed";
+		case BACKUP_ITEM_STATUS::UPDATE_PWD_CHANGED: return "Uploading password changed";
+		case BACKUP_ITEM_STATUS::TO_BE_CREATED: return "Uploading creating";
+		default: assert( false);
 	}
-	
-	_ctx._localMd5DoneQueue.unlock();
-	return nullptr;
+	return "";
 }
 
 void CSynchronizer::run()
 {
 	CUploader uploader(_ctx);
+	CTQueue<CAsset> & todo = _ctx._todoQueue;
 
-	CTQueue<CAsset> & localMd5Done = _ctx._localMd5DoneQueue;
-
-	bool remoteExists;
-	while ( (!localMd5Done.isEmpty()) || (!localMd5Done.done()) )
+	while ( (!todo.isEmpty()) || (!todo.done()) )
 	{
-		CAsset * p = getNext(remoteExists);
+		CAsset * p = todo.get();
 		if (p) {
-			if (p->isFolder())
+		
+			switch ( p->getBackupStatus() )
 			{
-				LOGD("IGNORE FOLDER '{}'", p->getRelativePath().string());
-
-			}
-			else if (!remoteExists)
-			{
-				
-				LOGD("UPLOAD '{}'", p->getRelativePath().string());
-				if (!uploader.upload(p))
-					_ctx.abort();
-				
-			} else {
-				
-				const CHash localH = p->getSrcHash();
-				const CHash remoteH= p->getDstHash();
-				assert( remoteH._computed && localH._computed );
-				
-				if (localH == remoteH)
-				{
-					if (_ctx.crypted())
-					{
-						// check if password changed
-						if (_ctx._options->_cryptoKey != p->getRemoteCryptoKey() ) {
-							LOGD("REPLACE PASSWORD CHANGED '{}'", p->getRelativePath().string());
-							if (!uploader.upload(p))
-								_ctx.abort();
-						}
-					}
-				
-					LOGD("SKIP '{}'", p->getRelativePath().string());
-					
-				} else {
-				
-					LOGD("REPLACE CONTENT CHANGED '{}'", p->getRelativePath().string());
+				case BACKUP_ITEM_STATUS::UNKNOWN:
+				case BACKUP_ITEM_STATUS::IGNORED:
+				case BACKUP_ITEM_STATUS::TO_BE_DELETED:
+				case BACKUP_ITEM_STATUS::IS_A_FOLDER:
+					assert( false );
+					break;
+			
+				case BACKUP_ITEM_STATUS::UP_TO_DATE:
+					LOGD("up to date '{}'", p->getRelativePath().string());
+					break;
+			
+				case BACKUP_ITEM_STATUS::UPDATE_CONTENT_CHANGED:
+				case BACKUP_ITEM_STATUS::UPDATE_PWD_CHANGED:
+				case BACKUP_ITEM_STATUS::TO_BE_CREATED:
+					LOGD("{} '{}'", uploadLabel(p->getBackupStatus()), p->getRelativePath().string());
 					if (!uploader.upload(p))
 						_ctx.abort();
-				}
+					break;
 			}
 		}
+
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		if (_ctx.aborted())
 			break;
@@ -429,7 +551,8 @@ int main(int argc, char ** argv)
 	CMySourceParser srcParser(context); // fill local and remote queues
 	CLocalMd5Process md5LocalEngine(context); // consume local queue and feed localDone queue
 	CRemoteMd5Process md5RemoteEngine(context, remoteLs); // consume remote queue and feed remoteDone queue
-	CSynchronizer synchronizer(context, remoteLs);
+	CBackupStatusUpdater bStatusUpdater( context, remoteLs); // consume localMd5Done and feed todo queue
+	CSynchronizer synchronizer(context);
 	
 	remoteLs.start();
 	srcParser.start();
@@ -437,9 +560,14 @@ int main(int argc, char ** argv)
 
 	remoteLs.waitForDone();
 	md5RemoteEngine.start(numThread_remoteMd5);
+	bStatusUpdater.start();
 	synchronizer.start();
 	
 	srcParser.waitDone();
+	
+	// here we can check for destinations files to be deleted
+	
+	
 	md5LocalEngine.waitDone();
 	md5RemoteEngine.waitDone();
 	synchronizer.waitDone();

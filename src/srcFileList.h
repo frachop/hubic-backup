@@ -42,6 +42,6 @@ private:
 	void parseRec(CAsset * crt, const std::set<std::string> & excludeList);
 
 private:
-	CCurl _curl; // pour url_encode
+	CCurl _curl; // for url_encode function
 };
 
