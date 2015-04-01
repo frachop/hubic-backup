@@ -51,6 +51,7 @@ COptions::COptions()
 ,	_dstContainer()
 ,	_dstFolder()
 ,	_cryptoPassword()
+,	_removeNonExistingFiles(false)
 ,	_authToken()
 ,	_authEndpoint()
 ,	_curlVerbose(false)
@@ -71,8 +72,9 @@ enum class EOptionFlag {
 	,	excludes
 	,	dstContainer
 	,	dstFolder
+
 	,	cryptPassword
-	
+	,	removeNonExistingFiles
 };
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -155,6 +157,8 @@ static const std::map<EOptionFlag, SOption> _o {
 	,	{EOptionFlag::dstContainer , { EOptionGroup::destination, "container"     , "destination hubic container", "c" }}
 	,	{EOptionFlag::dstFolder    , { EOptionGroup::destination, "dst"           , "destination folder", "o" }}
 	,	{EOptionFlag::cryptPassword, { EOptionGroup::destination, "crypt-password", "optional crypto password", "k" }}
+
+	,	{EOptionFlag::removeNonExistingFiles, { EOptionGroup::destination, "del-non-existing", "allow deleting non existing backup files", "d" }}
 	
 };
 
@@ -341,6 +345,8 @@ bool COptionsPriv::parse(int ac, char** av)
 			_cryptoKey = getCryptoKey(_cryptoPassword);
 		}
 
+		_removeNonExistingFiles = (exists( EOptionFlag::removeNonExistingFiles));
+
 		if (count("curl-verbose")) {
 			_curlVerbose = (po::variables_map::at( "curl-verbose" ).as<std::string>() == "on");
 		}
@@ -357,7 +363,7 @@ bool COptionsPriv::parse(int ac, char** av)
 		exit( EXIT_FAILURE );
 	}
 	
-#define S_LIB "{:15s}:"
+#define S_LIB "{:16s}:"
 	LOGI("program started");
 	LOGI("version {}", HUBACK_VERSION);
 	//LOGI("{} v{}", boost::filesystem::path(av[0]).filename().string(), getVersionString());
@@ -372,6 +378,11 @@ bool COptionsPriv::parse(int ac, char** av)
 	LOGI(S_LIB " {}", "Crypted ?", crypted() ? "yes" : "no");
 	if (crypted())
 		LOGI(S_LIB " {}", "Cryptokey", _cryptoKey.hex());
+
+	if (_removeNonExistingFiles)
+		LOGI(S_LIB " {}", "del non existing", "yes");
+	
+
 
 	return true;
 }

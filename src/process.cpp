@@ -35,8 +35,7 @@ CProcess::CProcess(CTQueue<CAsset> & srcQueue, CTQueue<CAsset> & dstQueue)
 
 CProcess::~CProcess()
 {
-	for (auto & t : _threads)
-		t.join();
+	waitDone();
 }
 
 void CProcess::start(std::size_t threadCount)

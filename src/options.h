@@ -60,6 +60,9 @@ public:
 	std::string _cryptoPassword;
 	NMD5::CDigest _cryptoKey;
 	
+public:
+	bool _removeNonExistingFiles;
+
 public: // debug options
 	std::string _authToken;
 	std::string _authEndpoint;

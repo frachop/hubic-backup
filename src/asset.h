@@ -94,6 +94,9 @@ public:
 	const NMD5::CDigest & getRemoteCryptoKey() const { return _remoteCryptoKey; }
 	void setRemoteCryptoKey(const NMD5::CDigest & k) { _remoteCryptoKey = k; }
 
+	std::string getRemoteLastModifDate() const { return _remoteLastModifDate; }
+	void setRemoteLastModifDate(const std::string & d) { _remoteLastModifDate = d; }
+
 public:
 	bool isCrypted() { return _crypted; }
 	void setCrypted(bool c) { _crypted = c; }
@@ -116,6 +119,7 @@ private:
 	std::atomic_bool _crypted;
 	CHash _dstHash;
 	NMD5::CDigest _remoteCryptoKey;
+	std::string   _remoteLastModifDate;
 	
 	std::atomic<BACKUP_ITEM_STATUS> _backupStatus;
 };

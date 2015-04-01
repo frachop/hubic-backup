@@ -244,6 +244,7 @@ bool CRemoteMd5Process::process(CAsset * p)
 			
 				CHash h;
 				const std::string uncryptedMd5 = rq.getResponseHeaderField(metaUncryptedMd5);
+				p->setRemoteLastModifDate(rq.getResponseHeaderField("Last-Modified"));
 				if (uncryptedMd5.empty()) {
 					h._md5 = NMD5::CDigest::fromString(rq.getResponseHeaderField("Etag"));
 					h._len = atoll( rq.getResponseHeaderField("Content-Length").c_str() );
@@ -424,6 +425,7 @@ void CBackupStatusUpdater::run()
 			}
 		
 			_ctx._todoQueue.add(p);
+			LOGI("{} {}", (int) p->getBackupStatus(), p->getRelativePath());
 		}
 		
 		if (_ctx.aborted())
@@ -521,7 +523,7 @@ void CSynchronizer::run()
 				case BACKUP_ITEM_STATUS::UPDATE_CONTENT_CHANGED:
 				case BACKUP_ITEM_STATUS::UPDATE_PWD_CHANGED:
 				case BACKUP_ITEM_STATUS::TO_BE_CREATED:
-					LOGD("{} '{}'", uploadLabel(p->getBackupStatus()), p->getRelativePath().string());
+					LOGI("{} '{}'", uploadLabel(p->getBackupStatus()), p->getRelativePath().string());
 					if (!uploader.upload(p))
 						_ctx.abort();
 					break;
@@ -535,6 +537,89 @@ void CSynchronizer::run()
 	
 	LOGD("{} DONE", __PRETTY_FUNCTION__);
 }
+
+
+//- /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class CBackupDeleter
+:	public CContextual
+{
+public:
+	CBackupDeleter(CContext & context, const CParser & parser, const CRemoteLs & remote);
+	~CBackupDeleter();
+
+	void start();
+	void waitDone();
+
+private:
+	void run();
+	CAsset * getNext(bool & remoteExists);
+
+private:
+	const CParser   & _parser;
+	const CRemoteLs & _remote;
+	std::thread _thread;
+};
+
+//- /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+CBackupDeleter::CBackupDeleter(CContext & ctx, const CParser & parser, const CRemoteLs & remote)
+:	CContextual(ctx)
+,	_parser(parser)
+,	_remote(remote)
+{
+}
+
+CBackupDeleter::~CBackupDeleter()
+{
+	waitDone();
+}
+
+void CBackupDeleter::start()
+{
+	assert(!_thread.joinable());
+	_thread= std::thread( &CBackupDeleter::run, this);
+}
+
+void CBackupDeleter::waitDone()
+{
+	if (_thread.joinable())
+		_thread.join();
+}
+
+void CBackupDeleter::run()
+{
+	if (! _ctx._options->_removeNonExistingFiles )
+		return;
+
+	LOGD("{} START", __PRETTY_FUNCTION__);
+	const CAsset * pRoot( _parser.getRoot() );
+	assert( pRoot );
+	
+	CRequest rq(_ctx._options->_curlVerbose);
+	for (const auto & p : _remote.paths())
+	{
+		const CAsset * pLocal = pRoot->find(p);
+		if (pLocal == nullptr)
+		{
+			rq.addHeader("X-Auth-Token", _ctx._cr.token());
+			const std::string url= fmt::format("{}/{}/{}", _ctx._cr.endpoint(), _ctx._options->_dstContainer, (_ctx._options->_dstFolder / rq.escapePath(p)).string() );
+			LOGI("deleting backup '{}'", url); //p.string());
+			rq.del(url);
+			if ( rq.getHttpResponseCode() != 204 )
+			{
+				LOGE("Failed to delete '{}' [http response : {}]", url, rq.getHttpResponseCode());
+				_ctx.abort();
+			}
+		}
+		
+		if (_ctx.aborted())
+			break;
+	}
+
+	LOGD("{} DONE", __PRETTY_FUNCTION__);
+}
+
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -550,27 +635,34 @@ int main(int argc, char ** argv)
 	CRemoteLs remoteLs( context );
 	CMySourceParser srcParser(context); // fill local and remote queues
 	CLocalMd5Process md5LocalEngine(context); // consume local queue and feed localDone queue
-	CRemoteMd5Process md5RemoteEngine(context, remoteLs); // consume remote queue and feed remoteDone queue
 	CBackupStatusUpdater bStatusUpdater( context, remoteLs); // consume localMd5Done and feed todo queue
-	CSynchronizer synchronizer(context);
 	
 	remoteLs.start();
 	srcParser.start();
 	md5LocalEngine.start(numThread_localMd5);
-
 	remoteLs.waitForDone();
+	
+	CRemoteMd5Process md5RemoteEngine(context, remoteLs); // consume remote queue and feed remoteDone queue
 	md5RemoteEngine.start(numThread_remoteMd5);
 	bStatusUpdater.start();
-	synchronizer.start();
 	
+	CSynchronizer synchronizer(context);
+	CBackupDeleter deleter(context, srcParser, remoteLs);
+	synchronizer.start();
+
 	srcParser.waitDone();
 	
 	// here we can check for destinations files to be deleted
+	deleter.start();
 	
+/*	// don't need to call these because
+	// they are automatacally called
+	// on their destructors
 	
 	md5LocalEngine.waitDone();
 	md5RemoteEngine.waitDone();
 	synchronizer.waitDone();
-
+	deleter.waitDone();
+*/
 	return EXIT_SUCCESS;
 }
