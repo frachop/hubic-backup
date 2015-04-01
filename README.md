@@ -61,6 +61,7 @@ destination:
   -c [ --container ] arg (=default)  destination hubic container
   -o [ --dst ] arg                   destination folder
   -k [ --crypt-password ] arg        optional crypto password
+  -d [ --del-non-existing ]          allow deleting non existing backup files
 ```
 ###Simple example :
 
