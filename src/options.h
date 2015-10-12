@@ -26,10 +26,7 @@
 
 //- ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#include <string>
-#include <set>
-#include <stdint.h>
-#include <boost/filesystem.hpp>
+#include "common.h"
 #include "md5.h"
 
 //- ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -52,10 +49,10 @@ public:
 	std::string  _hubicLogin;
 	std::string  _hubicPassword;
 
-	boost::filesystem::path _srcFolder;
+	bf::path _srcFolder;
 	std::set<std::string>   _excludes;
 	std::string             _dstContainer;
-	boost::filesystem::path _dstFolder;
+	bf::path _dstFolder;
 	
 	std::string _cryptoPassword;
 	NMD5::CDigest _cryptoKey;

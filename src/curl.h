@@ -53,7 +53,7 @@ public:
 
 public:
 	std::string escapeString( const std::string & src) const;
-	boost::filesystem::path escapePath(const boost::filesystem::path & path) const;
+	bf::path escapePath(const bf::path & path) const;
 
 public:
 	static size_t wfString(void *ptr, size_t size, size_t nmemb, std::string * s);

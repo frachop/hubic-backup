@@ -111,7 +111,7 @@ void CMySourceParser::parse()
 	{
 		CSourceParser::parse( _ctx._options->_srcFolder, _ctx._options->_excludes);
 	}
-	catch (const boost::filesystem::filesystem_error& ex)
+	catch (const bf::filesystem_error& ex)
 	{
 		// TODO: implement error handler
 		LOGE("{}", ex.what());
@@ -148,7 +148,7 @@ bool CLocalMd5Process::process( CAsset * p)
 	if (!p->isFolder()) {
 		
 		
-		const uint64_t sz= boost::filesystem::file_size(p->getFullPath());
+		const uint64_t sz= bf::file_size(p->getFullPath());
 		if (sz >= fileSizeMax) {
 			LOGE("file '{}' is more than 5Go.", p->getFullPath());
 			_ctx.abort();
@@ -656,7 +656,7 @@ int main(int argc, char ** argv)
 	deleter.start();
 	
 /*	// don't need to call these because
-	// they are automatacally called
+	// they are automatically called
 	// on their destructors
 	
 	md5LocalEngine.waitDone();

@@ -191,6 +191,7 @@ static po::value_semantic* getDefaultValue(EOptionFlag f)
 		case EOptionFlag::dstContainer : return po::value<std::string>()->default_value("default");
 		case EOptionFlag::dstFolder    : return po::value<std::string>();
 
+		case EOptionFlag::removeNonExistingFiles: break;
 		case EOptionFlag::cryptPassword: return po::value<std::string>();
 	};
 	return new po::untyped_value(true);
@@ -205,9 +206,9 @@ static boost::shared_ptr<po::option_description> getDesc(EOptionFlag f, const SO
 
 //* ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static void loadExcludes(std::set<std::string> & x, const boost::filesystem::path & ePath)
+static void loadExcludes(std::set<std::string> & x, const bf::path & ePath)
 {
-	using namespace boost::filesystem;
+	using namespace bf;
 	if (!exists(ePath))
 		throw std::logic_error(fmt::format("exclude file list path doesn't exists '{}'", ePath.string()));
 
@@ -289,14 +290,14 @@ bool COptionsPriv::parse(int ac, char** av)
 		po::notify(*this);
 		
 		if (exists(EOptionFlag::Help)) {
-			std::cout << "Usage: " << boost::filesystem::path(av[0]).filename().string() << " [OPTIONS]" << std::endl;
+			std::cout << "Usage: " << bf::path(av[0]).filename().string() << " [OPTIONS]" << std::endl;
 			std::cout << visible << std::endl;
 			return false;
 		}
 		
 		if (exists(EOptionFlag::Version)) {
 			std::cout
-				<< boost::filesystem::path(av[0]).filename().string() << " v" << HUBACK_VERSION
+				<< bf::path(av[0]).filename().string() << " v" << HUBACK_VERSION
 				//<< std::endl
 				//<< "   Git commit Id : " << getGitCommitIdString()
 				<< std::endl;
@@ -325,10 +326,10 @@ bool COptionsPriv::parse(int ac, char** av)
 		CHECK_MANDATORY_ARG(EOptionFlag::srcFolder);
 		_srcFolder = trimRightSlash( at(EOptionFlag::srcFolder).as<std::string>());
 
-		if (!boost::filesystem::exists(_srcFolder))
+		if (!bf::exists(_srcFolder))
 			 throw std::logic_error(fmt::format("src folder '{}' doesn't exists", _srcFolder.string()));
 		
-		if (!boost::filesystem::is_directory(_srcFolder))
+		if (!bf::is_directory(_srcFolder))
 			 throw std::logic_error(fmt::format("src folder '{}' is not a folder", _srcFolder.string()));
 		
 		if (exists(EOptionFlag::excludes))
@@ -366,7 +367,7 @@ bool COptionsPriv::parse(int ac, char** av)
 #define S_LIB "{:16s}:"
 	LOGI("program started");
 	LOGI("version {}", HUBACK_VERSION);
-	//LOGI("{} v{}", boost::filesystem::path(av[0]).filename().string(), getVersionString());
+	//LOGI("{} v{}", bf::path(av[0]).filename().string(), getVersionString());
 	//LOGI("Git commit Id : %s", getGitCommitIdString().c_str());
 	LOGI("with settings :");
 	LOGI(S_LIB " {}", "Hubic login", _hubicLogin);

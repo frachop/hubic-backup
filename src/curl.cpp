@@ -70,9 +70,9 @@ std::string CCurl::escapeString( const std::string & src) const
 	return result;
 }
 
-boost::filesystem::path CCurl::escapePath(const boost::filesystem::path & path) const
+bf::path CCurl::escapePath(const bf::path & path) const
 {
-	boost::filesystem::path res;
+	bf::path res;
 	for (const auto i : path)
 		res = res / escapeString(i.string());
 	

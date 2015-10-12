@@ -36,7 +36,7 @@ public:
 	CSourceParser() {}
 	~CSourceParser() {}
 
-	void parse(const boost::filesystem::path & src, const std::set<std::string> & excludeList);
+	void parse(const bf::path & src, const std::set<std::string> & excludeList);
 
 private:
 	void parseRec(CAsset * crt, const std::set<std::string> & excludeList);

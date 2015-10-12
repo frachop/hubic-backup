@@ -26,9 +26,9 @@
 #include "wildcard.h"
 #include "common.h"
 
-static bool exclude( const boost::filesystem::path & path,  const std::set<std::string> & patterns )
+static bool exclude( const bf::path & path,  const std::set<std::string> & patterns )
 {
-	namespace bf= boost::filesystem;
+	namespace bf= bf;
 	for (const auto & w : patterns) {
 	
 		if (w.find('/') == std::string::npos)
@@ -50,9 +50,9 @@ static bool exclude( const boost::filesystem::path & path,  const std::set<std::
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void CSourceParser::parse(const boost::filesystem::path & src, const std::set<std::string> & excludeList)
+void CSourceParser::parse(const bf::path & src, const std::set<std::string> & excludeList)
 {
-	assert( boost::filesystem::is_directory(src) );
+	assert( bf::is_directory(src) );
 
 	delete _root;
 	_root = new CAsset(nullptr, src.string(), true );
@@ -70,7 +70,7 @@ void CSourceParser::parseRec(CAsset * pCrt, const std::set<std::string> & exclud
 	if (!pCrt->isFolder() || abort())
 		return;
 
-	namespace bf= boost::filesystem;
+	namespace bf= bf;
 	const auto crt = pCrt->getFullPath();
 	const bf::path root = pCrt->getRoot();
 	

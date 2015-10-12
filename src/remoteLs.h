@@ -37,14 +37,14 @@ public:
 
 	void start();
 	void waitForDone();
-	bool exists(const boost::filesystem::path & p) const { return _paths.find(p) != _paths.end(); }
-	const std::set<boost::filesystem::path> & paths() const { return _paths; }
+	bool exists(const bf::path & p) const { return _paths.find(p) != _paths.end(); }
+	const std::set<bf::path> & paths() const { return _paths; }
 	
 private:
 	void run();
 	
 private:
 	std::thread  _thread;
-	std::set<boost::filesystem::path> _paths;
+	std::set<bf::path> _paths;
 };
 

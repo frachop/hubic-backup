@@ -53,12 +53,15 @@ constexpr int numThread_remoteMd5= 2;
 #include <chrono>
 
 #include <boost/filesystem.hpp>
+namespace bf = boost::filesystem;
+
 #include <boost/algorithm/string.hpp>
 #include <jsoncpp/json/json.h>
 #include <curl/curl.h>
 
-#include "../thirdparty/spdlog/spdlog.h"
+//- LOGGING ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#include "../thirdparty/spdlog/spdlog.h"
 static constexpr const char * const configConsoleName = "console";
 namespace fmt= spdlog::details::fmt;
 
@@ -78,7 +81,6 @@ namespace spdlog {
 		constexpr int level_enum_count = 9;
 	}
 }
-
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 

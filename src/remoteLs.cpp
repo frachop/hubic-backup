@@ -56,7 +56,7 @@ void CRemoteLs::run()
 	CRequest rq(_ctx._options->_curlVerbose);
 	rq.addHeader("X-Auth-Token", _ctx._cr.token());
 	
-	const boost::filesystem::path dstFolder(_ctx._options->_dstFolder);
+	const bf::path dstFolder(_ctx._options->_dstFolder);
 	
 	const std::string url( fmt::format("{}/{}/?prefix={}/", _ctx._cr.endpoint(), _ctx._options->_dstContainer, dstFolder.string()));
 	rq.get(url);
@@ -67,7 +67,7 @@ void CRemoteLs::run()
 	std::istringstream isstream(r);
 	while (std::getline(isstream, line))
 	{
-		const boost::filesystem::path relPath = makeRel(dstFolder, line);
+		const bf::path relPath = makeRel(dstFolder, line);
 		_paths.insert(relPath);
 		if (_ctx.aborted())
 			return;

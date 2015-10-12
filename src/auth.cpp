@@ -120,7 +120,7 @@ static std::string requestTokenCode(CRequest & rq,  const std::string & code, co
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-CToken requestToken(CRequest & rq, const std::string & code, const CGetCredentialSettings & settings)
+static CToken requestToken(CRequest & rq, const std::string & code, const CGetCredentialSettings & settings)
 {
 	LOGD(AUTH_LOG "request token ...");
 

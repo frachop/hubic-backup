@@ -24,10 +24,8 @@
 
 #pragma once
 
-#include <vector>
-#include <mutex>
-#include <atomic> 
-#include <boost/filesystem.hpp>
+#include "common.h"
+#include <atomic>
 #include "md5.h"
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -72,14 +70,14 @@ public:
 	void dump(int rg) const;
 
 public:
-	boost::filesystem::path getFullPath() const;
-	boost::filesystem::path getRelativePath() const;
-	boost::filesystem::path getRoot() const;
+	bf::path getFullPath() const;
+	bf::path getRelativePath() const;
+	bf::path getRoot() const;
 	std::size_t childCount() const { return _childs.size(); }
 	std::size_t childCountRec() const;
 	CAsset * childAt(std::size_t i) const;
 	CAsset * childByName(const std::string & name) const;
-	CAsset * find(const boost::filesystem::path & path) const;
+	CAsset * find(const bf::path & path) const;
 
 public:
 	bool isFolder() const { return _isFolder; }
@@ -126,7 +124,7 @@ private:
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-boost::filesystem::path makeRel(const boost::filesystem::path & root, const boost::filesystem::path & path);
+bf::path makeRel(const bf::path & root, const bf::path & path);
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 

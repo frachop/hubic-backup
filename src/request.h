@@ -58,7 +58,7 @@ public:
 	CURLcode post(const std::string & url) { return perform(POST, url); }
 	CURLcode del (const std::string & url) { return perform(DELETE, url); }
 	std::string escapeString( const std::string & src) const { return curl().escapeString( src ); }
-	boost::filesystem::path escapePath(const boost::filesystem::path & src) const { return curl().escapePath( src ); }
+	bf::path escapePath(const bf::path & src) const { return curl().escapePath( src ); }
 
 	const std::string & getResponse() const { return _response; }
 	const std::string & getHeaderResponse() const { return _headerResponse; }

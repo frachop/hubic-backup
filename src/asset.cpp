@@ -27,13 +27,13 @@
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-boost::filesystem::path makeRel(const boost::filesystem::path & root, const boost::filesystem::path & path)
+bf::path makeRel(const bf::path & root, const bf::path & path)
 {
 	auto iRoot = root.begin();
 	const auto iRootEnd = root.end();
 	const auto iPathEnd = path.end();
 	
-	boost::filesystem::path res;
+	bf::path res;
 	for (auto iPath = path.begin(); iPath != iPathEnd; ++iPath) {
 	
 		if (iRoot != iRootEnd) {
@@ -97,7 +97,7 @@ std::size_t CAsset::childCountRec() const
 	return res;
 }
 
-boost::filesystem::path CAsset::getFullPath() const
+bf::path CAsset::getFullPath() const
 {
 	if (_parent == nullptr)
 		return _name;
@@ -105,19 +105,19 @@ boost::filesystem::path CAsset::getFullPath() const
 	return _parent->getFullPath() / _name;
 }
 
-boost::filesystem::path CAsset::getRelativePath() const
+bf::path CAsset::getRelativePath() const
 {
 	if (_parent == nullptr)
-		return boost::filesystem::path();
+		return bf::path();
 	
-	boost::filesystem::path res= _parent->getRelativePath();
+	bf::path res= _parent->getRelativePath();
 	if (res.empty())
 		return _name;
 		
 	return res / _name;
 }
 
-CAsset * CAsset::find(const boost::filesystem::path & path) const
+CAsset * CAsset::find(const bf::path & path) const
 {
 	CAsset * p = const_cast<CAsset*>(this);
 	for (const auto i : path)
@@ -130,7 +130,7 @@ CAsset * CAsset::find(const boost::filesystem::path & path) const
 	return p;
 }
 
-boost::filesystem::path CAsset::getRoot() const
+bf::path CAsset::getRoot() const
 {
 	if (_parent == nullptr)
 		return _name;
