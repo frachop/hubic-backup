@@ -92,4 +92,13 @@ AC_HAVE_LIBRARY(
 	[AC_MSG_ERROR([Can't find boost_program_options library])]
 )
 
+# --- PTHREAD ---------------------------------------------------
+AC_CHECK_HEADERS([pthread.h], [], [AC_MSG_ERROR([Can't find pthread lib headers])])
+AC_HAVE_LIBRARY(
+	pthread,
+	[], 
+	[AC_MSG_ERROR([Can't find pthread library])]
+)
+
+
 AC_OUTPUT(Makefile src/Makefile)
