@@ -53,6 +53,8 @@ static bool exclude( const bf::path & path,  const std::set<std::string> & patte
 void CSourceParser::parse(const bf::path & src, const std::set<std::string> & excludeList)
 {
 	assert( bf::is_directory(src) );
+	_excludeFileCount= 0;
+	_srcFileCount= 0;
 
 	delete _root;
 	_root = new CAsset(nullptr, src.string(), true );
@@ -80,7 +82,8 @@ void CSourceParser::parseRec(CAsset * pCrt, const std::set<std::string> & exclud
 		const bf::path f = dir_iter->path();
 		const bf::path rel = makeRel(root, f);
 		if (exclude(rel, excludeList)) {
-			LOGI("excluding {}", f.string());
+			LOGD("excluding {}", f.string());
+			_excludeFileCount++;
 			continue;
 		}
 		
@@ -90,7 +93,7 @@ void CSourceParser::parseRec(CAsset * pCrt, const std::set<std::string> & exclud
 		if (bf::is_regular_file(dir_iter->status()) )
 		{
 			newAsset = new CAsset(pCrt, name, false);
-			
+			_srcFileCount++;
 		}
 		else if (bf::is_directory(dir_iter->status()))
 		{

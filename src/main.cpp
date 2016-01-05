@@ -42,6 +42,7 @@ public:
 
 	void start();
 	void waitDone();
+	bool done() const { return _done; }
 
 private:
 	void parse();
@@ -53,13 +54,15 @@ protected:
 	virtual void onDone() override;
 
 private:
-	std::thread  _thread;
+	std::thread      _thread;
+	std::atomic_bool _done;
 };
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 CMySourceParser::CMySourceParser(CContext & ctx)
 :	CContextual(ctx)
+,	_done(false)
 {
 }
 
@@ -71,6 +74,7 @@ CMySourceParser::~CMySourceParser()
 
 void CMySourceParser::start()
 {
+	_done = false;
 	_thread = std::thread( &CMySourceParser::parse, this);
 }
 
@@ -116,6 +120,9 @@ void CMySourceParser::parse()
 		// TODO: implement error handler
 		LOGE("{}", ex.what());
 	}
+	_done = true;
+	LOGI("source file count : {}", getSrcFileCount());
+	LOGI("skipped file count : {}", getExcludeFileCount());
 }
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -425,7 +432,7 @@ void CBackupStatusUpdater::run()
 			}
 		
 			_ctx._todoQueue.add(p);
-			LOGI("{} {}", (int) p->getBackupStatus(), p->getRelativePath());
+			LOGD("{} {}", (int) p->getBackupStatus(), p->getRelativePath());
 		}
 		
 		if (_ctx.aborted())
@@ -450,11 +457,18 @@ public:
 	void start();
 	void waitDone();
 
+	uint64_t getUpToDateFileCount () const { return _upToDateFileCount ; }
+	uint64_t getUploadedFileCount () const { return _uploadedFileCount ; }
+	uint64_t getTotalUploadedBytes() const { return _totalUploadedBytes; }
+
 private:
 	void run();
 
 private:
 	std::vector<std::thread> _threads;
+	std::atomic<uint64_t> _upToDateFileCount;
+	std::atomic<uint64_t> _uploadedFileCount;
+	std::atomic<uint64_t> _totalUploadedBytes;
 };
 
 
@@ -462,6 +476,9 @@ private:
 
 CSynchronizer::CSynchronizer(CContext & ctx)
 :	CContextual(ctx)
+,	_upToDateFileCount (0)
+,	_totalUploadedBytes(0)
+,	_uploadedFileCount (0)
 {
 }
 
@@ -475,6 +492,10 @@ CSynchronizer::~CSynchronizer()
 void CSynchronizer::start()
 {
 	assert( _threads.empty() );
+	_upToDateFileCount = 0;
+	_totalUploadedBytes= 0;
+	_uploadedFileCount = 0;
+
 	for (int i=0; i<numThread_upload; ++i)
 		_threads.push_back( std::thread( &CSynchronizer::run, this) );
 }
@@ -518,14 +539,19 @@ void CSynchronizer::run()
 			
 				case BACKUP_ITEM_STATUS::UP_TO_DATE:
 					LOGD("up to date '{}'", p->getRelativePath().string());
+					_upToDateFileCount++;
 					break;
 			
 				case BACKUP_ITEM_STATUS::UPDATE_CONTENT_CHANGED:
 				case BACKUP_ITEM_STATUS::UPDATE_PWD_CHANGED:
 				case BACKUP_ITEM_STATUS::TO_BE_CREATED:
-					LOGI("{} '{}'", uploadLabel(p->getBackupStatus()), p->getRelativePath().string());
+					LOGD("{} '{}'", uploadLabel(p->getBackupStatus()), p->getRelativePath().string());
 					if (!uploader.upload(p))
 						_ctx.abort();
+					else {
+						_uploadedFileCount++;
+						_totalUploadedBytes += uploader.uploadedByteCount();
+					}
 					break;
 			}
 		}
@@ -550,6 +576,7 @@ public:
 
 	void start();
 	void waitDone();
+	uint64_t getDeletedFileCount() const { return _deletedFileCount; }
 
 private:
 	void run();
@@ -559,6 +586,7 @@ private:
 	const CParser   & _parser;
 	const CRemoteLs & _remote;
 	std::thread _thread;
+	std::atomic<uint64_t> _deletedFileCount;
 };
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -567,6 +595,7 @@ CBackupDeleter::CBackupDeleter(CContext & ctx, const CParser & parser, const CRe
 :	CContextual(ctx)
 ,	_parser(parser)
 ,	_remote(remote)
+,	_deletedFileCount(0)
 {
 }
 
@@ -578,6 +607,7 @@ CBackupDeleter::~CBackupDeleter()
 void CBackupDeleter::start()
 {
 	assert(!_thread.joinable());
+	_deletedFileCount = 0;
 	_thread= std::thread( &CBackupDeleter::run, this);
 }
 
@@ -604,12 +634,15 @@ void CBackupDeleter::run()
 		{
 			rq.addHeader("X-Auth-Token", _ctx._cr.token());
 			const std::string url= fmt::format("{}/{}/{}", _ctx._cr.endpoint(), _ctx._options->_dstContainer, (_ctx._options->_dstFolder / rq.escapePath(p)).string() );
-			LOGI("deleting backup '{}'", url); //p.string());
+			LOGD("deleting backup '{}'", url); //p.string());
 			rq.del(url);
 			if ( rq.getHttpResponseCode() != 204 )
 			{
 				LOGE("Failed to delete '{}' [http response : {}]", url, rq.getHttpResponseCode());
 				_ctx.abort();
+			}
+			else {
+				_deletedFileCount++;
 			}
 		}
 		
@@ -620,15 +653,120 @@ void CBackupDeleter::run()
 	LOGD("{} DONE", __PRETTY_FUNCTION__);
 }
 
+//- /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class CLogNotifier
+{
+public:
+	CLogNotifier(CMySourceParser & sp, CSynchronizer & s, CBackupDeleter & d);
+	~CLogNotifier();
+
+	void start();
+	void waitDone();
+
+private:
+	void run();
+	void report();
+
+private:
+	CMySourceParser & _srcParser;
+	CSynchronizer & _synchronizer;
+	CBackupDeleter& _deleter;
+	std::thread _thread;
+	std::atomic_bool _abort;
+};
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+static std::string getMemSizeLib(uint64_t byteCount)
+{
+	if (byteCount < 1024)
+		return fmt::format("{} byte{}", byteCount, (byteCount) ? "s" : "");
+	
+	double sz = byteCount;
+	sz /= 1024.0;
+	if (sz < 1024.0)
+		return fmt::format("{:.2f} Ko ({} bytes)", sz, byteCount);
+
+	sz /= 1024.0;
+	if (sz < 1024.0)
+		return fmt::format("{:.2f} Mo ({} bytes)", sz, byteCount);
+
+	sz /= 1024.0;
+	if (sz < 1024.0)
+		return fmt::format("{:.2f} Go ({} bytes)", sz, byteCount);
+
+	sz /= 1024.0;
+	return fmt::format("{:.2f} To ({} bytes)", sz, byteCount);
+}
+
+//- /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+CLogNotifier::CLogNotifier(CMySourceParser & sp, CSynchronizer & s, CBackupDeleter & d)
+:	_srcParser(sp)
+,	_synchronizer(s)
+,	_deleter(d)
+,	_abort(false)
+{
+}
+
+CLogNotifier::~CLogNotifier()
+{
+	waitDone();
+}
+
+void CLogNotifier::start()
+{
+	_abort = false;
+	assert(!_thread.joinable());
+	_thread= std::thread( &CLogNotifier::run, this);
+}
+
+void CLogNotifier::waitDone()
+{
+	if (_thread.joinable()) {
+		_abort = true;
+		_thread.join();
+	}
+}
+
+void CLogNotifier::report()
+{
+	LOGI("--" );
+	if (!_srcParser.done()) {
+		LOGI("(src parser is working ...) {} sources file", _srcParser.getSrcFileCount() );
+		LOGI("(src parser is working ...) {} sources exluded", _srcParser.getExcludeFileCount() );
+	}
+
+	LOGI("{} uptodate file(s)", _synchronizer.getUpToDateFileCount() );
+	LOGI("{} file(s) uploaded", _synchronizer.getUploadedFileCount() );
+	LOGI("{} uploaded", getMemSizeLib( _synchronizer.getTotalUploadedBytes() ) );
+	LOGI("{} deleted", _deleter.getDeletedFileCount() );
+}
+
+void CLogNotifier::run()
+{
+	auto start = std::chrono::system_clock::now();
+	while (! _abort )
+	{
+	    auto duration = std::chrono::duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now() - start);
+		if (duration.count() > 1000)
+		{
+			report();
+			start = std::chrono::system_clock::now();
+		}
+		std::this_thread::sleep_for(std::chrono::milliseconds(300));
+	}
+
+}
+
 
 int main(int argc, char ** argv)
 {
 	CContext context(argc, argv);
 	if (context._options == nullptr)
 		return EXIT_FAILURE;
-	
+
 	if (!context.getCredentials())
 		return EXIT_FAILURE;
 
@@ -648,21 +786,28 @@ int main(int argc, char ** argv)
 	
 	CSynchronizer synchronizer(context);
 	CBackupDeleter deleter(context, srcParser, remoteLs);
+	CLogNotifier logNotifier(srcParser, synchronizer, deleter);
+	
 	synchronizer.start();
+	logNotifier.start();
 
 	srcParser.waitDone();
 	
-	// here we can check for destinations files to be deleted
+	// here, as the source parser ended,
+	// we can check for destination files to be deleted
 	deleter.start();
 	
-/*	// don't need to call these because
-	// they are automatically called
-	// on their destructors
-	
-	md5LocalEngine.waitDone();
-	md5RemoteEngine.waitDone();
 	synchronizer.waitDone();
 	deleter.waitDone();
-*/
+	logNotifier.waitDone();
+
+	// print infos
+	
+	LOGI("------ Summary ------" );
+	LOGI("{} uptodate file(s)", synchronizer.getUpToDateFileCount() );
+	LOGI("{} file(s) uploaded", synchronizer.getUploadedFileCount() );
+	LOGI("{} uploaded", getMemSizeLib( synchronizer.getTotalUploadedBytes() ) );
+	LOGI("{} deleted", deleter.getDeletedFileCount() );
+
 	return EXIT_SUCCESS;
 }

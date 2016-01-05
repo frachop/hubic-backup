@@ -125,7 +125,7 @@ bool CUploader::upload(CAsset * p)
 	assert( p );
 	assert( !p->isFolder() );
 	
-	LOGI("uploading {}", p->getRelativePath());
+	LOGD("uploading {}", p->getRelativePath());
 	
 	const CHash h = p->getSrcHash();
 	
@@ -198,7 +198,7 @@ bool CUploader::upload(CAsset * p)
 	}
 
 	LOGT("Crypted Md5 : {} Ok.", _md5EncComputer.getDigest().hex() );
-	LOGI("'{}' uploaded Ok.", url );
+	LOGD("'{}' uploaded Ok.", url );
 	
 	return true;
 }

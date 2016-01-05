@@ -37,6 +37,7 @@ public:
 	CUploader(CContext & ctx);
 	~CUploader();
 	bool upload(CAsset * p);
+	uint64_t uploadedByteCount() const { return _totalUploaded; }
 
 private:
 	bool crypted() const { return _ctx._options->crypted(); }

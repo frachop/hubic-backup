@@ -33,15 +33,19 @@ class CSourceParser
 :	public CParser
 {
 public:
-	CSourceParser() {}
+	CSourceParser() : _excludeFileCount(0), _srcFileCount(0) {}
 	~CSourceParser() {}
 
 	void parse(const bf::path & src, const std::set<std::string> & excludeList);
+	uint64_t getExcludeFileCount() const { return _excludeFileCount; }
+	uint64_t getSrcFileCount() const { return _srcFileCount; }
 
 private:
 	void parseRec(CAsset * crt, const std::set<std::string> & excludeList);
 
 private:
 	CCurl _curl; // for url_encode function
+	std::atomic<uint64_t> _excludeFileCount;
+	std::atomic<uint64_t> _srcFileCount;
 };
 
