@@ -366,7 +366,7 @@ CAsset * CBackupStatusUpdater::getNext(bool & remoteExists)
 		if (p->isFolder()) {
 			// folder . nothing to do;
 			localMd5DoneQueue.erase(l);
-			continue;
+			return nullptr;
 		}
 		
 		assert( p->getSrcHash()._computed);
