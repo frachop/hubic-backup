@@ -331,6 +331,10 @@ void CBackupStatusUpdater::waitDone()
 
 CAsset * CBackupStatusUpdater::getNext(bool & remoteExists)
 {
+	// find first local which is not a folder and md5 is computed and
+	// remote doesn't exists or remote md5 already readed
+	// whene found, remove it from the localMd5DoneQueue and return it
+
 	// helper class to lock and auto unlock
 	// localMd5Queue
 	struct CSafeLocalAssets
@@ -352,12 +356,8 @@ CAsset * CBackupStatusUpdater::getNext(bool & remoteExists)
 			_l.erase(i);
 		}
 		
-		
 	} localMd5DoneQueue(_ctx);
-
-	// find first local which is not a folder and md5 is computed and
-	// remote doesn't exists or remote md5 already readed
-	// whene found, remove it from the localMd5DoneQueue
+	
 	
 	remoteExists = false;
 	for (auto l = localMd5DoneQueue._l.begin(); l != localMd5DoneQueue._l.end(); ++l)
@@ -384,12 +384,12 @@ CAsset * CBackupStatusUpdater::getNext(bool & remoteExists)
 				// skip it
 				localMd5DoneQueue.erase(l);
 				return p;
-
 			}
 		}
 	}
 	
 	return nullptr;
+
 }
 
 void CBackupStatusUpdater::run()
@@ -496,7 +496,7 @@ void CSynchronizer::start()
 	_totalUploadedBytes= 0;
 	_uploadedFileCount = 0;
 
-	for (int i=0; i<numThread_upload; ++i)
+	for (int i=0; i<_ctx._options->_numThreadUpload; ++i)
 		_threads.push_back( std::thread( &CSynchronizer::run, this) );
 }
 
@@ -777,11 +777,11 @@ int main(int argc, char ** argv)
 	
 	remoteLs.start();
 	srcParser.start();
-	md5LocalEngine.start(numThread_localMd5);
+	md5LocalEngine.start(context._options->_numThreadLocalMd5);
 	remoteLs.waitForDone();
 	
 	CRemoteMd5Process md5RemoteEngine(context, remoteLs); // consume remote queue and feed remoteDone queue
-	md5RemoteEngine.start(numThread_remoteMd5);
+	md5RemoteEngine.start(context._options->_numThreadRemoteMd5);
 	bStatusUpdater.start();
 	
 	CSynchronizer synchronizer(context);

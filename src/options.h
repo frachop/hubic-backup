@@ -60,6 +60,11 @@ public:
 public:
 	bool _removeNonExistingFiles;
 
+public: // computed from machine core count
+	int _numThreadUpload   ;
+	int _numThreadLocalMd5 ;
+	int _numThreadRemoteMd5;
+
 public: // debug options
 	std::string _authToken;
 	std::string _authEndpoint;

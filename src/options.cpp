@@ -52,6 +52,9 @@ COptions::COptions()
 ,	_dstFolder()
 ,	_cryptoPassword()
 ,	_removeNonExistingFiles(false)
+,	_numThreadUpload   (1)
+,	_numThreadLocalMd5 (1)
+,	_numThreadRemoteMd5(1)
 ,	_authToken()
 ,	_authEndpoint()
 ,	_curlVerbose(false)
@@ -351,6 +354,20 @@ bool COptionsPriv::parse(int ac, char** av)
 		if (count("curl-verbose")) {
 			_curlVerbose = (po::variables_map::at( "curl-verbose" ).as<std::string>() == "on");
 		}
+		
+		
+		auto thCount = std::thread::hardware_concurrency();
+		if (thCount > 3)
+		{
+			auto i = thCount/2;
+			_numThreadUpload = i < 5 ? i : 5;
+			thCount -= _numThreadUpload;
+			
+			_numThreadRemoteMd5 = thCount / 2;
+			thCount -= _numThreadRemoteMd5;
+			
+			_numThreadLocalMd5 = thCount;
+		}
 
 	}
 	catch (const std::exception & e)
@@ -383,8 +400,10 @@ bool COptionsPriv::parse(int ac, char** av)
 	if (_removeNonExistingFiles)
 		LOGI(S_LIB " {}", "del non existing", "yes");
 	
-
-
+	LOGI(S_LIB " {}", "upload thread", _numThreadUpload);
+	LOGI(S_LIB " {}", "remoteMd5 thread", _numThreadRemoteMd5);
+	LOGI(S_LIB " {}", "localMd5 thread", _numThreadLocalMd5);
+exit(0);
 	return true;
 }
 
