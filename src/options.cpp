@@ -403,7 +403,6 @@ bool COptionsPriv::parse(int ac, char** av)
 	LOGI(S_LIB " {}", "upload thread", _numThreadUpload);
 	LOGI(S_LIB " {}", "remoteMd5 thread", _numThreadRemoteMd5);
 	LOGI(S_LIB " {}", "localMd5 thread", _numThreadLocalMd5);
-exit(0);
 	return true;
 }
 
