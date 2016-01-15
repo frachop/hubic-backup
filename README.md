@@ -14,7 +14,6 @@
 ## Limitations
 
 * [Large objects](http://docs.openstack.org/developer/swift/overview_large_objects.html) unsupported yet
-* According to [this document](http://docs.openstack.org/developer/swift/api/object_api_v1_overview.html), more than 10000 files on a container unsupported yet.
 
 ## Dependencies
 
