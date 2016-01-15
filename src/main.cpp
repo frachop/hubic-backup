@@ -154,7 +154,6 @@ bool CLocalMd5Process::process( CAsset * p)
 	bool bRes(true);
 	if (!p->isFolder()) {
 		
-		
 		const uint64_t sz= bf::file_size(p->getFullPath());
 		if (sz >= fileSizeMax) {
 			LOGE("file '{}' is more than 5Go.", p->getFullPath());
@@ -162,40 +161,53 @@ bool CLocalMd5Process::process( CAsset * p)
 			return false;
 		}
 		
-		FILE* f = fopen( p->getFullPath().c_str(), "rb");
-		if (f == nullptr) {
-			LOGE("file open error '{}'", p->getFullPath());
-			_ctx.abort();
-			return false;
-		}
-		
-		NMD5::CComputer c;
-		c.init();
-		uint64_t reste( sz );
-		std::vector<uint8_t> buffer(1024*1024*1); // 1Mo
-		while (reste && (!abort()))
+		if (_ctx._options->_forceComputeLocalMd5)
 		{
-			const uint64_t readed = fread(buffer.data(),1,buffer.size(), f);
-			if (ferror( f )) {
-				fclose(f);
-				LOGE("file read error '{}'", p->getFullPath());
+			// we have to compute local md5 to compare
+	
+			FILE* f = fopen( p->getFullPath().c_str(), "rb");
+			if (f == nullptr) {
+				LOGE("file open error '{}'", p->getFullPath());
 				_ctx.abort();
 				return false;
 			}
 			
-			reste -= readed;
-			if (readed)
-				c.feed( buffer.data(), readed);
-		}
-		c.done();
-		fclose(f);
+			NMD5::CComputer c;
+			c.init();
+			uint64_t reste( sz );
+			std::vector<uint8_t> buffer(1024*1024*1); // 1Mo
+			while (reste && (!abort()))
+			{
+				const uint64_t readed = fread(buffer.data(),1,buffer.size(), f);
+				if (ferror( f )) {
+					fclose(f);
+					LOGE("file read error '{}'", p->getFullPath());
+					_ctx.abort();
+					return false;
+				}
+				
+				reste -= readed;
+				if (readed)
+					c.feed( buffer.data(), readed);
+			}
+			c.done();
+			fclose(f);
+			
+			//LOGD("computing md5 of {}", p->getFullPath().string());
+			CHash h;
+			h._computed= true;
+			h._len = sz;
+			h._md5 = c.getDigest();
+			p->setSrcHash(h);
 		
-		//LOGD("computing md5 of {}", p->getFullPath().string());
-		CHash h;
-		h._computed= true;
-		h._len = sz;
-		h._md5 = c.getDigest();
-		p->setSrcHash(h);
+		} else {
+			// we will just compare last modified date
+			// => nothing to do here
+			CHash h;
+			h._computed= true;
+			h._len = bf::file_size(p->getFullPath());
+			p->setSrcHash(h);
+		}
 	}
 	return bRes;
 }
@@ -240,10 +252,9 @@ bool CRemoteMd5Process::process(CAsset * p)
 	{
 		if ( _remoteLs.exists( p->getRelativePath()) )
 		{
-		
 			const CCredentials & cr = _ctx._cr;
 		
-			rq.addHeader("X-Auth-Token", cr.token());
+			rq.addHeader(headerAuthToken, cr.token());
 			const std::string url( fmt::format("{}/{}/{}/{}", cr.endpoint(), _ctx._options->_dstContainer, _ctx._options->_dstFolder.string(), rq.escapePath(p->getRelativePath()).string()));
 			rq.head(url);
 			
@@ -251,7 +262,7 @@ bool CRemoteMd5Process::process(CAsset * p)
 			
 				CHash h;
 				const std::string uncryptedMd5 = rq.getResponseHeaderField(metaUncryptedMd5);
-				p->setRemoteLastModifDate(rq.getResponseHeaderField("Last-Modified"));
+				p->setRemoteLastModifDateString(rq.getResponseHeaderField("Last-Modified"));
 				if (uncryptedMd5.empty()) {
 					h._md5 = NMD5::CDigest::fromString(rq.getResponseHeaderField("Etag"));
 					h._len = atoll( rq.getResponseHeaderField("Content-Length").c_str() );
@@ -260,6 +271,12 @@ bool CRemoteMd5Process::process(CAsset * p)
 					h._len = atoll( rq.getResponseHeaderField(metaUncryptedLen).c_str() );
 					p->setRemoteCryptoKey( NMD5::CDigest::fromString( rq.getResponseHeaderField(metaCryptoKey) ) );
 				}
+
+				const std::string lmd= rq.getResponseHeaderField(metaLastModificationDate);
+				if (!lmd.empty())
+					p->setRemoteLastModifTime( atoll( lmd.c_str() ) );
+				else
+					p->setRemoteLastModifTime( INVALID_TIME );
 
 				h._computed = true;
 				p->setDstHash(h);
@@ -369,7 +386,10 @@ CAsset * CBackupStatusUpdater::getNext(bool & remoteExists)
 			return nullptr;
 		}
 		
-		assert( p->getSrcHash()._computed);
+		if (_ctx._options->_forceComputeLocalMd5) {
+			assert( p->getSrcHash()._computed);
+		}
+		
 		remoteExists = _remoteLs.exists( p->getRelativePath() );
 		if (!remoteExists) {
 		
@@ -408,12 +428,23 @@ void CBackupStatusUpdater::run()
 				p->setBackupStatus(BACKUP_ITEM_STATUS::TO_BE_CREATED);
 				
 			} else {
+			
+				bool sameFingerPrint( false );
+				if (_ctx._options->_forceComputeLocalMd5) {
+					// compare md5
+					const CHash localH = p->getSrcHash();
+					const CHash remoteH= p->getDstHash();
+					assert( remoteH._computed && localH._computed );
+					sameFingerPrint= (localH == remoteH);
+					
+				} else {
+					// compare last modified date
+					sameFingerPrint=
+						(p->getRemoteLastModifTime() != INVALID_TIME) &&
+						(p->getRemoteLastModifTime() == p->getLocalLastModifTime());
+				}
 				
-				const CHash localH = p->getSrcHash();
-				const CHash remoteH= p->getDstHash();
-				assert( remoteH._computed && localH._computed );
-				
-				if (localH == remoteH)
+				if (sameFingerPrint)
 				{
 					if (_ctx.crypted())
 					{
@@ -427,7 +458,7 @@ void CBackupStatusUpdater::run()
 					} else // not crypted
 						p->setBackupStatus(BACKUP_ITEM_STATUS::UP_TO_DATE);
 
-				} else // md5 are differents
+				} else // 'md5' or 'last modfied date' are differents
 					p->setBackupStatus(BACKUP_ITEM_STATUS::UPDATE_CONTENT_CHANGED);
 			}
 		
@@ -458,6 +489,7 @@ public:
 	void waitDone();
 
 	uint64_t getUpToDateFileCount () const { return _upToDateFileCount ; }
+	uint64_t getUploadingFileCount() const { return _uploadingFileCount ; }
 	uint64_t getUploadedFileCount () const { return _uploadedFileCount ; }
 	uint64_t getTotalUploadedBytes() const { return _totalUploadedBytes; }
 
@@ -467,6 +499,7 @@ private:
 private:
 	std::vector<std::thread> _threads;
 	std::atomic<uint64_t> _upToDateFileCount;
+	std::atomic<uint64_t> _uploadingFileCount;
 	std::atomic<uint64_t> _uploadedFileCount;
 	std::atomic<uint64_t> _totalUploadedBytes;
 };
@@ -477,6 +510,7 @@ private:
 CSynchronizer::CSynchronizer(CContext & ctx)
 :	CContextual(ctx)
 ,	_upToDateFileCount (0)
+,	_uploadingFileCount(0)
 ,	_totalUploadedBytes(0)
 ,	_uploadedFileCount (0)
 {
@@ -493,6 +527,7 @@ void CSynchronizer::start()
 {
 	assert( _threads.empty() );
 	_upToDateFileCount = 0;
+	_uploadingFileCount= 0;
 	_totalUploadedBytes= 0;
 	_uploadedFileCount = 0;
 
@@ -544,21 +579,32 @@ void CSynchronizer::run()
 			
 				case BACKUP_ITEM_STATUS::UPDATE_CONTENT_CHANGED:
 				case BACKUP_ITEM_STATUS::UPDATE_PWD_CHANGED:
-				case BACKUP_ITEM_STATUS::TO_BE_CREATED:
+				case BACKUP_ITEM_STATUS::TO_BE_CREATED: {
 					LOGD("{} '{}'", uploadLabel(p->getBackupStatus()), p->getRelativePath().string());
-					if (!uploader.upload(p))
+					_uploadingFileCount ++;
+					CUploader::result_code r(uploader.upload(p));
+					if ((r == CUploader::resRetry) && (!_ctx.aborted())) { // retry once if server internal error
+						std::this_thread::sleep_for(std::chrono::seconds(1));
+						LOGW("retrying uploading {}", p->getRelativePath().string());
+						r = uploader.upload(p);
+					}
+					
+					if (r != CUploader::resOk)
 						_ctx.abort();
+					
 					else {
+						_uploadingFileCount --;
 						_uploadedFileCount++;
 						_totalUploadedBytes += uploader.uploadedByteCount();
 					}
-					break;
+				} break;
 			}
 		}
 
-		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		if (_ctx.aborted())
 			break;
+		
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	}
 	
 	LOGD("{} DONE", __PRETTY_FUNCTION__);
@@ -632,7 +678,7 @@ void CBackupDeleter::run()
 		const CAsset * pLocal = pRoot->find(p);
 		if (pLocal == nullptr)
 		{
-			rq.addHeader("X-Auth-Token", _ctx._cr.token());
+			rq.addHeader(headerAuthToken, _ctx._cr.token());
 			const std::string url= fmt::format("{}/{}/{}", _ctx._cr.endpoint(), _ctx._options->_dstContainer, (_ctx._options->_dstFolder / rq.escapePath(p)).string() );
 			LOGD("deleting backup '{}'", url); //p.string());
 			rq.del(url);
@@ -739,6 +785,7 @@ void CLogNotifier::report()
 	}
 
 	LOGI("{} uptodate file(s)", _synchronizer.getUpToDateFileCount() );
+	LOGI("{} file(s) uploading", _synchronizer.getUploadingFileCount() );
 	LOGI("{} file(s) uploaded", _synchronizer.getUploadedFileCount() );
 	LOGI("{} uploaded", getMemSizeLib( _synchronizer.getTotalUploadedBytes() ) );
 	LOGI("{} deleted", _deleter.getDeletedFileCount() );
@@ -770,15 +817,16 @@ int main(int argc, char ** argv)
 	if (!context.getCredentials())
 		return EXIT_FAILURE;
 
-	CRemoteLs remoteLs( context );
+	CRemoteLs remoteLs;
+	remoteLs.build( context._options->_dstFolder, context._cr );
+	LOGI("Remote file list build [ {} files ] ", remoteLs.paths().size());
+	
 	CMySourceParser srcParser(context); // fill local and remote queues
 	CLocalMd5Process md5LocalEngine(context); // consume local queue and feed localDone queue
 	CBackupStatusUpdater bStatusUpdater( context, remoteLs); // consume localMd5Done and feed todo queue
 	
-	remoteLs.start();
 	srcParser.start();
 	md5LocalEngine.start(context._options->_numThreadLocalMd5);
-	remoteLs.waitForDone();
 	
 	CRemoteMd5Process md5RemoteEngine(context, remoteLs); // consume remote queue and feed remoteDone queue
 	md5RemoteEngine.start(context._options->_numThreadRemoteMd5);
@@ -805,6 +853,7 @@ int main(int argc, char ** argv)
 	
 	LOGI("------ Summary ------" );
 	LOGI("{} uptodate file(s)", synchronizer.getUpToDateFileCount() );
+	LOGI("{} file(s) uploading", synchronizer.getUploadingFileCount() );
 	LOGI("{} file(s) uploaded", synchronizer.getUploadedFileCount() );
 	LOGI("{} uploaded", getMemSizeLib( synchronizer.getTotalUploadedBytes() ) );
 	LOGI("{} deleted", deleter.getDeletedFileCount() );

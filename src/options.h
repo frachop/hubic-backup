@@ -59,6 +59,7 @@ public:
 	
 public:
 	bool _removeNonExistingFiles;
+	bool _forceComputeLocalMd5;
 
 public: // computed from machine core count
 	int _numThreadUpload   ;

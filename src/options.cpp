@@ -52,6 +52,7 @@ COptions::COptions()
 ,	_dstFolder()
 ,	_cryptoPassword()
 ,	_removeNonExistingFiles(false)
+,	_forceComputeLocalMd5(false)
 ,	_numThreadUpload   (1)
 ,	_numThreadLocalMd5 (1)
 ,	_numThreadRemoteMd5(1)
@@ -355,7 +356,6 @@ bool COptionsPriv::parse(int ac, char** av)
 			_curlVerbose = (po::variables_map::at( "curl-verbose" ).as<std::string>() == "on");
 		}
 		
-		
 		auto thCount = std::thread::hardware_concurrency();
 		if (thCount > 3)
 		{
@@ -384,8 +384,6 @@ bool COptionsPriv::parse(int ac, char** av)
 #define S_LIB "{:16s}:"
 	LOGI("program started");
 	LOGI("version {}", HUBACK_VERSION);
-	//LOGI("{} v{}", bf::path(av[0]).filename().string(), getVersionString());
-	//LOGI("Git commit Id : %s", getGitCommitIdString().c_str());
 	LOGI("with settings :");
 	LOGI(S_LIB " {}", "Hubic login", _hubicLogin);
 	LOGI(S_LIB " {}", "Sources folder", _srcFolder);
@@ -400,6 +398,7 @@ bool COptionsPriv::parse(int ac, char** av)
 	if (_removeNonExistingFiles)
 		LOGI(S_LIB " {}", "del non existing", "yes");
 	
+	LOGI(S_LIB " {}", "finger print", _forceComputeLocalMd5 ? "md5 computation" : "last modification date");
 	LOGI(S_LIB " {}", "upload thread", _numThreadUpload);
 	LOGI(S_LIB " {}", "remoteMd5 thread", _numThreadRemoteMd5);
 	LOGI(S_LIB " {}", "localMd5 thread", _numThreadLocalMd5);

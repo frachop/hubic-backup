@@ -70,6 +70,7 @@ namespace NMD5
 		
 	public:
 		bool init();
+		bool isInitialised() const { return _p != nullptr; }
 		bool feed(const void* src, std::size_t len);
 		bool done();
 		CDigest getDigest() const { return _result; }

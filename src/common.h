@@ -29,14 +29,9 @@
 #define HUBACK_NAME "hubic-backup"
 #define HUBACK_VERSION_MAJOR "0"
 #define HUBACK_VERSION_MINOR "1"
-#define HUBACK_VERSION HUBACK_VERSION_MAJOR "." HUBACK_VERSION_MINOR
+#define HUBACK_VERSION_BUILD "51"
+#define HUBACK_VERSION HUBACK_VERSION_MAJOR "." HUBACK_VERSION_MINOR "." HUBACK_VERSION_BUILD
 
-//- /////////////////////////////////////////////////////////////////////////////////////////////////////////
-/*
-constexpr int numThread_upload   = 5;
-constexpr int numThread_localMd5 = 2;
-constexpr int numThread_remoteMd5= 2;
-*/
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #include <unistd.h>
@@ -84,13 +79,22 @@ namespace spdlog {
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+constexpr uint64_t INVALID_TIME = std::numeric_limits<uint64_t>::max();
+
+//- /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+constexpr const char * headerAuthToken= "X-Auth-Token";
+
 constexpr const char * metaUncryptedMd5= "X-Object-Meta-Hubk-UncryptedMd5";
 constexpr const char * metaUncryptedLen= "X-Object-Meta-Hubk-UncryptedLen";
 constexpr const char * metaVersion     = "X-Object-Meta-Hubk-Version";
 constexpr const char * metaCryptoKey   = "X-Object-Meta-Hubk-Cryptokey";
+constexpr const char * metaLastModificationDate= "X-Object-Meta-Hubk-LastModDate";
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 constexpr uint64_t fileSizeMax = 5368709120ULL; // 5 Go = 5*1024*1024*1024
 
+//- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+bf::path makeRel(const bf::path & root, const bf::path & path);

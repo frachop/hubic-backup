@@ -24,27 +24,31 @@
 
 #pragma once
 
-#include "context.h"
+#include "common.h"
+#include "credentials.h"
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class CRemoteLs
-:	public CContextual
 {
 public:
-	CRemoteLs(CContext & ctx);
-	~CRemoteLs();
-
-	void start();
-	void waitForDone();
-	bool exists(const bf::path & p) const { return _paths.find(p) != _paths.end(); }
+	CRemoteLs();
+	void build( const bf::path & folder, const CCredentials & cr, std::size_t threadCount = 6);
 	const std::set<bf::path> & paths() const { return _paths; }
+	bool exists(const bf::path & p) const { return _paths.find(p) != _paths.end(); }
 	
 private:
-	void run();
-	
+	void run(); // thread function
+	void logNotifier(); // thread function
+
 private:
-	std::thread  _thread;
-	std::set<bf::path> _paths;
+	class CAssetData;
+	class CAssetQueue;
+
+private:
+	CCredentials             _cr;
+	CAssetQueue*             _queue;
+	std::atomic<std::size_t> _folderCount;
+	std::set<bf::path>       _paths;
 };
 

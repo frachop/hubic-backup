@@ -92,8 +92,14 @@ public:
 	const NMD5::CDigest & getRemoteCryptoKey() const { return _remoteCryptoKey; }
 	void setRemoteCryptoKey(const NMD5::CDigest & k) { _remoteCryptoKey = k; }
 
-	std::string getRemoteLastModifDate() const { return _remoteLastModifDate; }
-	void setRemoteLastModifDate(const std::string & d) { _remoteLastModifDate = d; }
+	std::string getRemoteLastModifDateString() const { return _remoteLastModifDateString; }
+	void setRemoteLastModifDateString(const std::string & d) { _remoteLastModifDateString = d; }
+
+	uint64_t getLocalLastModifTime() const { return _localLastModifTime; }
+	void setLocalLastModifTime(uint64_t m) { _localLastModifTime = m; }
+
+	uint64_t getRemoteLastModifTime() const { return _remoteLastModifTime; }
+	void setRemoteLastModifTime(uint64_t m) { _remoteLastModifTime = m; }
 
 public:
 	bool isCrypted() { return _crypted; }
@@ -111,20 +117,19 @@ private:
 	bool _isFolder;
 	
 	std::mutex _srcHashMutex;
-	CHash _srcHash;
+	CHash      _srcHash;
+	uint64_t   _localLastModifTime;
 	
 	std::mutex _dstHashMutex;
 	std::atomic_bool _crypted;
 	CHash _dstHash;
 	NMD5::CDigest _remoteCryptoKey;
-	std::string   _remoteLastModifDate;
+	std::string   _remoteLastModifDateString;
+	uint64_t      _remoteLastModifTime;
 	
 	std::atomic<BACKUP_ITEM_STATUS> _backupStatus;
 };
 
-//- /////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-bf::path makeRel(const bf::path & root, const bf::path & path);
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 

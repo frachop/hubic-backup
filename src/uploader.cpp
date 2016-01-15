@@ -61,8 +61,12 @@ size_t CUploader::rdd(uint8_t *pDst, size_t size, size_t nmemb)
 	{
 		if (_bStarting)
 			_bStarting = false;
+		
 		uploaded= fread(pDst,size,nmemb,_f);
-		_bDone = feof(_f);
+		if (_md5Computer.isInitialised())
+			_md5Computer.feed(pDst, uploaded);
+		
+		_bDone = feof(_f) || (uploaded == 0);
 		
 	} else {
 		std::vector<uint8_t> cryptedData;
@@ -81,8 +85,11 @@ size_t CUploader::rdd(uint8_t *pDst, size_t size, size_t nmemb)
 		}
 		
 		std::vector<uint8_t> readedData(std::max((2*size*nmemb) / 3, size_t(1)));
-		const std::size_t readed = fread(readedData.data(),size,readedData.size(),_f);
-		_bDone = feof(_f) || readed == 0;
+		const std::size_t readed = fread(readedData.data(),1,readedData.size(),_f);
+		if (_md5Computer.isInitialised())
+			_md5Computer.feed(readedData.data(), readed);
+
+		_bDone = feof(_f) || (readed == 0);
 		readedData.resize(readed);
 		
 		if (!readedData.empty()) {
@@ -111,13 +118,38 @@ size_t CUploader::rdd(uint8_t *pDst, size_t size, size_t nmemb)
 	
 	const CHash h = _crt->getSrcHash();
 	const uint64_t prc = std::min( static_cast<uint64_t>(100), (100*_totalUploaded)/std::max(uint64_t(1),h._len));
-	LOGT(" {}% [ {} / {} ] uploaded", prc, std::min(h._len, _totalUploaded), h._len );
+	LOGT(" {}% [ {} / {} ] uploaded ({})", prc, std::min(h._len, _totalUploaded), h._len, uploaded );
 	
 	_totalUploaded += uploaded;
 	return uploaded;
 }
 
-bool CUploader::upload(CAsset * p)
+static void addMetaDatasToRequest(CRequest & r, CAsset * p, bool crypted  )
+{
+	if (crypted) {
+		r.addHeader(metaUncryptedMd5, p->getSrcHash()._md5.hex());
+		r.addHeader(metaUncryptedLen, fmt::format("{}", p->getSrcHash()._len));
+		r.addHeader(metaCryptoKey   , COptions::get()->_cryptoKey.hex());
+	}
+	r.addHeader( metaLastModificationDate, fmt::format("{}", p->getLocalLastModifTime() ));
+}
+
+bool CUploader::checkMd5(const std::string & url)
+{
+	assert(_crt );
+	if (!crypted()) {
+		assert( _crt->getSrcHash()._md5.isValid() );
+	}
+	
+	const auto expected = (crypted()) ? _md5EncComputer.getDigest() : _crt->getSrcHash()._md5;
+	_rq.addHeader(headerAuthToken, _ctx._cr.token());
+	_rq.head(url);
+	return (NMD5::CDigest::fromString(_rq.getResponseHeaderField("Etag")) == expected);
+}
+
+
+
+CUploader::result_code CUploader::upload(CAsset * p)
 {
 	assert(_crt == nullptr);
 	assert(_f == nullptr);
@@ -127,79 +159,95 @@ bool CUploader::upload(CAsset * p)
 	
 	LOGD("uploading {}", p->getRelativePath());
 	
-	const CHash h = p->getSrcHash();
+	auto hLocal = p->getSrcHash();
 	
 	_crt = p;
 	_totalReaded= _totalUploaded= 0;
 	_bStarting = true;
 	_bDone = false;
-	_md5EncComputer.init();
+	
+	if (!hLocal._md5.isValid())
+		_md5Computer.init();
 	
 	if (crypted()) {
+		_md5EncComputer.init();
+		
 		assert( _cryptoContext == nullptr );
 		// create one context for each upload so the salt will be regenerated !
 		_cryptoContext = CCryptoContext::create(_ctx._options->_cryptoPassword);
 	}
 	
-	_rq.addHeader("X-Auth-Token", _ctx._cr.token());
+	_rq.addHeader(headerAuthToken, _ctx._cr.token());
 	_rq.addHeader(metaVersion, HUBACK_VERSION);
 	
-	if (!crypted()) {
-	
-		// not crypted
-		_rq.addHeader("Etag", h._md5.hex());
-		_rq.addHeader("Content-Length", fmt::format("{}", h._len));
-		//_rq.addHeader("If-None-Match", md5.hex()); // comment ca marche ca ?
-	
-	} else {
-		// crypted
+	if (crypted())
 		_rq.addHeader("Content-Type", "application/octet-stream");
-		_rq.addHeader(metaUncryptedMd5, p->getSrcHash()._md5.hex());
-		_rq.addHeader(metaUncryptedLen, fmt::format("{}", p->getSrcHash()._len));
-		_rq.addHeader(metaCryptoKey   , _ctx._options->_cryptoKey.hex());
-	}
 	
-	_f = fopen(p->getFullPath().c_str(), "rb");
-	_rq.setopt(CURLOPT_READDATA, this);
-	_rq.setopt(CURLOPT_READFUNCTION, CUploader::_rdd);
+	else
+		_rq.addHeader("Content-Length", fmt::format("{}", hLocal._len));
 	
 	const std::string url= fmt::format("{}/{}/{}", _ctx._cr.endpoint(), _ctx._options->_dstContainer, (_ctx._options->_dstFolder / _rq.escapePath(p->getRelativePath())).string() );
 
+	addMetaDatasToRequest(_rq, p, crypted() );
+	_rq.setopt(CURLOPT_READDATA, this);
+	_rq.setopt(CURLOPT_READFUNCTION, CUploader::_rdd);
+	_f = fopen(p->getFullPath().c_str(), "rb");
 	_rq.put(url);
+	fclose(_f); _f = nullptr;
+	
+	if (_md5Computer.isInitialised()) {
+		_md5Computer.done();
+		
+		assert( !hLocal._md5.isValid() );
+		hLocal._computed = true;
+		hLocal._md5= _md5Computer.getDigest();
+		p->setSrcHash(hLocal);
+	}
 
 	if (_cryptoContext) {
 		delete _cryptoContext;
 		_cryptoContext = nullptr;
 
 		_md5EncComputer.done();
-		LOGT("md5 encrypted '{}' = '{}'", _crt->getRelativePath().string(), _md5EncComputer.getDigest().hex());
+		LOGI("md5 encrypted '{}' = '{}'", _crt->getRelativePath().string(), _md5EncComputer.getDigest().hex());
 	}
 
-	fclose(_f);
-	_f = nullptr;
-	_crt = nullptr;
 	
 	if (_rq.getHttpResponseCode() != 201)
 	{
+		_crt = nullptr;
+		if (_rq.getHttpResponseCode() == 500) {
+			LOGW("Server internal error (500) uploading '{}' [will retry]", url);
+			return resRetry;
+		}
+	
 		LOGE("Error uploading '{}' [http response : {}]", url, _rq.getHttpResponseCode());
-		return false;
+		return resError;
 	}
 	
-	if (!crypted())
-		return true;
+	// Check uploaded file
+	// sometime, hubic return a bad md5 tag once. (is it a bug from this app ??)
+	// we need to check it twice in this case
 	
-	// Check encrypted md5 file
-	_rq.addHeader("X-Auth-Token", _ctx._cr.token());
-	_rq.head(url);
-	if (NMD5::CDigest::fromString(_rq.getResponseHeaderField("Etag")) != _md5EncComputer.getDigest()) {
-		LOGE("Error uploading encrypted {}", url);
-		LOGD("md5 mismatch '{}' != '{}'", _rq.getResponseHeaderField("Etag"), _md5EncComputer.getDigest().hex());
-		return false;
+	if (!checkMd5(url)) {
+		// try again
+		std::this_thread::sleep_for(std::chrono::seconds(5));
+		if (!checkMd5(url)) {
+			LOGE("Error uploading encrypted {}", url);
+			LOGE("md5 mismatch got '{}' != expected '{}'", _rq.getResponseHeaderField("Etag"), (crypted() ? _md5EncComputer.getDigest().hex() : _md5Computer.getDigest().hex()));
+			LOGE("http response : {}", _rq.getHeaderResponse());
+			_crt = nullptr;
+			return resError;
+		}
 	}
 
-	LOGT("Crypted Md5 : {} Ok.", _md5EncComputer.getDigest().hex() );
-	LOGD("'{}' uploaded Ok.", url );
+	// update meta datas
+	_rq.addHeader(headerAuthToken, _ctx._cr.token());
+	addMetaDatasToRequest(_rq, p, crypted() );
+	_rq.post(url);
 	
-	return true;
+	LOGD("'{}' uploaded Ok.", url );
+	_crt = nullptr;
+	return resOk;
 }
 

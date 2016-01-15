@@ -34,15 +34,24 @@ class CUploader
 :	public CContextual
 {
 public:
+	enum result_code {
+		resOk = 0,
+		resRetry,
+		resError
+	};
+
+public:
 	CUploader(CContext & ctx);
 	~CUploader();
-	bool upload(CAsset * p);
+	result_code upload(CAsset * p);
 	uint64_t uploadedByteCount() const { return _totalUploaded; }
 
 private:
 	bool crypted() const { return _ctx._options->crypted(); }
 	static size_t _rdd(void *ptr, size_t size, size_t nmemb, void *uploader);
 	size_t rdd(uint8_t *pDst, size_t size, size_t nmemb);
+	bool checkMd5(const std::string & url);
+
 
 private:
 	CRequest      _rq;
@@ -50,11 +59,12 @@ private:
 	CCryptEngine  _cryptor;
 	std::vector<uint8_t> _cryptedData;
 	
+	NMD5::CComputer _md5Computer;
 	NMD5::CComputer _md5EncComputer;
 
-	FILE        * _f;
-	uint64_t   _totalReaded; // for encryption progress
-	uint64_t   _totalUploaded;
+	FILE    * _f;
+	uint64_t  _totalReaded; // for encryption progress
+	uint64_t  _totalUploaded;
 
 	bool _bStarting;
 	bool _bDone;

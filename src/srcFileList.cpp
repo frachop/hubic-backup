@@ -92,7 +92,10 @@ void CSourceParser::parseRec(CAsset * pCrt, const std::set<std::string> & exclud
 		const std::string encodedName( _curl.escapeString(name));
 		if (bf::is_regular_file(dir_iter->status()) )
 		{
+			const std::time_t lwt = bf::last_write_time( f );
 			newAsset = new CAsset(pCrt, name, false);
+			newAsset->setLocalLastModifTime(lwt);
+			
 			_srcFileCount++;
 		}
 		else if (bf::is_directory(dir_iter->status()))

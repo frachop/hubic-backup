@@ -38,6 +38,7 @@ public:
 public:
 	CRequest(bool bVerbose);
 	virtual ~CRequest() {}
+	void setVerbose(bool b) { _bVerbose = b; }
 
 public:
 	void addHeader( const std::string & str);

@@ -32,7 +32,7 @@
 
 template<typename T>
 class CTQueue
-:	private std::list<T *>
+:	protected std::list<T *>
 {
 public:
 	CTQueue() : _done(false) {}
@@ -44,6 +44,15 @@ public:
 		this->push_back(p);
 		_m.unlock();
 	}
+	
+	template<class TL>
+	void add(const TL & l) {
+		_m.lock();
+		for (auto i : l)
+			this->push_back(i);
+		_m.unlock();
+	}
+	
 	
 	std::size_t size() {
 		_m.lock();
@@ -78,7 +87,7 @@ public:
 	std::list<T *> & lock() { _m.lock(); return (*this); }
 	void unlock() { _m.unlock(); }
 
-private:
+protected:
 	std::mutex       _m;
 	std::atomic_bool _done;
 };

@@ -65,7 +65,7 @@ void CProcess::run()
 				break;
 			_dstQueue.add(p);
 		}
-		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		std::this_thread::sleep_for(std::chrono::microseconds(5));
 		if (abort())
 			break;
 	}
