@@ -24,7 +24,7 @@
 | [boost-filesystem](http://www.boost.org/doc/libs/1_57_0/libs/filesystem/doc/index.htm) | `libboost-filesystem-dev` |
 | [boost-regex](http://www.boost.org/doc/libs/1_57_0/libs/regex/doc/html/index.html) | `libboost-regex-dev` |
 | [boost-program-options](http://www.boost.org/doc/libs/1_57_0/doc/html/program_options.html) | `libboost-program-options-dev` |
-| [jsoncpp](http://open-source-parsers.github.io/jsoncpp-docs/doxygen/index.html) | `libjsoncpp-dev` | 
+| [jsonxx](https://github.com/hjiang/jsonxx) | n/a : embedded | 
 
 ## Setup
 
@@ -38,7 +38,7 @@ sudo apt-get install git build-essential autoconf automake
 # Clone this repository
 git clone https://github.com/frachop/hubic-backup.git && cd hubic-backup/
 # Install dependencies 
-sudo apt-get install libboost-system-dev libcurl4-openssl-dev libboost-filesystem-dev libboost-regex-dev libboost-program-options-dev libjsoncpp-dev libssl-dev
+sudo apt-get install libboost-system-dev libcurl4-openssl-dev libboost-filesystem-dev libboost-regex-dev libboost-program-options-dev libssl-dev
 # Launch automake
 aclocal && automake && autoconf
 # Build sources
@@ -68,6 +68,8 @@ auth:
 source:
   -i [ --src ] arg                   source folder
   -x [ --excludes ] arg              optional exclude file list path
+  --fingerprint-md5                  force local md5 computation to compare 
+                                     with destination file. CPU expansive
 
 destination:
   -c [ --container ] arg (=default)  destination hubic container

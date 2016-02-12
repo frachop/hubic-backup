@@ -24,6 +24,7 @@
 
 #include "curl.h"
 #include "credentials.h"
+#include "../thirdparty/jsonxx/jsonxx.h"
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -62,28 +63,30 @@ bool CCredentials::fromJson(const std::string & j)
 {
 	clear();
 	
-	Json::Value root;
-	Json::Reader reader;
-	const bool parsedSuccess = reader.parse(j,root,false);
-	if (!parsedSuccess) {
-		LOGE(" credentials parse error : {}", reader.getFormatedErrorMessages());
+	jsonxx::Object root;
+	if (!root.parse(j)) {
+		LOGE("Credentials json parse error {}", j);
 		return false;
 	}
 	
-	const std::set<std::string> expectedKeys {
-		"token","endpoint","expires"
-	};
+	if (!root.has<jsonxx::String>("token")) {
+		LOGE("Credentials json parse error .Can't find token : {}", j);
+		return false;
+	}
+	
+	_token = root.get<jsonxx::String>("token");
+	
+	if (!root.has<jsonxx::String>("endpoint")) {
+		LOGE("Credentials json parse error .Can't find endpoint : {}", j);
+		return false;
+	}
+	
+	_endpoint = root.get<jsonxx::String>("endpoint");
 
-	for (auto k : expectedKeys) {
-		if (!root.isMember(k)) {
-			LOGE(" credentials parse error : : expecting key '{}'", k );
-			return false;
-		}
+	if (root.has<jsonxx::String>("expires")) {
+		_expires = root.get<jsonxx::String>("expires");
 	}
 
-	_token   = root["token"   ].asString();
-	_endpoint= root["endpoint"].asString();
-	_expires = root["expires" ].asString();
 	return true;
 
 }

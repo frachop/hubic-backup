@@ -53,14 +53,6 @@ AC_CHECK_LIB(
 	[AC_MSG_ERROR([Can't find crypto library (openssl)])]
 )
 
-# --- JSONCPP ---------------------------------------------------
-AC_CHECK_HEADERS([jsoncpp/json/json.h], [], [AC_MSG_ERROR([Can't find jsoncpp headers])])
-AC_HAVE_LIBRARY(
-	jsoncpp, 
-	[], 
-	[AC_MSG_ERROR([Can't find jsoncpp library])]
-)
-
 # --- BOOST-FILESYSTEM ---------------------------------------------------
 AC_CHECK_HEADERS([boost/system/api_config.hpp], [], [AC_MSG_ERROR([Can't find boost system headers])])
 AC_CHECK_HEADERS([boost/filesystem.hpp], [], [AC_MSG_ERROR([Can't find boost filesystem headers])])

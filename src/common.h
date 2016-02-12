@@ -29,7 +29,7 @@
 #define HUBACK_NAME "hubic-backup"
 #define HUBACK_VERSION_MAJOR "0"
 #define HUBACK_VERSION_MINOR "1"
-#define HUBACK_VERSION_BUILD "53"
+#define HUBACK_VERSION_BUILD "54"
 #define HUBACK_VERSION HUBACK_VERSION_MAJOR "." HUBACK_VERSION_MINOR "." HUBACK_VERSION_BUILD
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -40,6 +40,7 @@
 #include <string>
 #include <vector>
 #include <list>
+#include <map>
 #include <iostream>
 #include <set>
 #include <mutex>
@@ -51,7 +52,6 @@
 namespace bf = boost::filesystem;
 
 #include <boost/algorithm/string.hpp>
-#include <jsoncpp/json/json.h>
 #include <curl/curl.h>
 
 //- LOGGING ////////////////////////////////////////////////////////////////////////////////////////////////////
