@@ -74,6 +74,7 @@ enum class EOptionFlag {
 	
 	,	srcFolder
 	,	excludes
+	,	fingerPrintMd5
 	,	dstContainer
 	,	dstFolder
 
@@ -158,6 +159,8 @@ static const std::map<EOptionFlag, SOption> _o {
 	
 	,	{EOptionFlag::srcFolder    , { EOptionGroup::source     , "src"           , "source folder", "i" }}
 	,	{EOptionFlag::excludes     , { EOptionGroup::source     , "excludes"      , "optional exclude file list path", "x" }}
+	,	{EOptionFlag::fingerPrintMd5, { EOptionGroup::source     , "fingerprint-md5"      , "force local md5 computation to compare with destination file. CPU expansive" }}
+	
 	,	{EOptionFlag::dstContainer , { EOptionGroup::destination, "container"     , "destination hubic container", "c" }}
 	,	{EOptionFlag::dstFolder    , { EOptionGroup::destination, "dst"           , "destination folder", "o" }}
 	,	{EOptionFlag::cryptPassword, { EOptionGroup::destination, "crypt-password", "optional crypto password", "k" }}
@@ -192,6 +195,7 @@ static po::value_semantic* getDefaultValue(EOptionFlag f)
 		case EOptionFlag::hubicPwd     : return po::value<std::string>();
 		case EOptionFlag::srcFolder    : return po::value<std::string>();
 		case EOptionFlag::excludes     : return po::value<std::string>();
+		case EOptionFlag::fingerPrintMd5: break;
 		case EOptionFlag::dstContainer : return po::value<std::string>()->default_value("default");
 		case EOptionFlag::dstFolder    : return po::value<std::string>();
 
@@ -343,7 +347,7 @@ bool COptionsPriv::parse(int ac, char** av)
 			_dstContainer= at(EOptionFlag::dstContainer).as<std::string>();
 			
 		CHECK_MANDATORY_ARG(EOptionFlag::dstFolder);
-		_dstFolder = at(EOptionFlag::dstFolder).as<std::string>();
+		_dstFolder = trimRightSlash(at(EOptionFlag::dstFolder).as<std::string>());
 
 		if (exists( EOptionFlag::cryptPassword)) {
 			_cryptoPassword = at(EOptionFlag::cryptPassword).as<std::string>();
@@ -351,6 +355,7 @@ bool COptionsPriv::parse(int ac, char** av)
 		}
 
 		_removeNonExistingFiles = (exists( EOptionFlag::removeNonExistingFiles));
+		_forceComputeLocalMd5   = (exists( EOptionFlag::fingerPrintMd5));
 
 		if (count("curl-verbose")) {
 			_curlVerbose = (po::variables_map::at( "curl-verbose" ).as<std::string>() == "on");
@@ -386,11 +391,11 @@ bool COptionsPriv::parse(int ac, char** av)
 	LOGI("version {}", HUBACK_VERSION);
 	LOGI("with settings :");
 	LOGI(S_LIB " {}", "Hubic login", _hubicLogin);
-	LOGI(S_LIB " {}", "Sources folder", _srcFolder);
+	LOGI(S_LIB " \"{}\"", "Sources folder", _srcFolder.string() + "/");
 	for (const auto & s : _excludes)
 		LOGI(S_LIB " {}", "excludes", s);
 	LOGI(S_LIB " {}", "Container", _dstContainer);
-	LOGI(S_LIB " {}", "Destination", _dstFolder);
+	LOGI(S_LIB " \"{}\"", "Destination", _dstFolder.string() + "/");
 	LOGI(S_LIB " {}", "Crypted ?", crypted() ? "yes" : "no");
 	if (crypted())
 		LOGI(S_LIB " {}", "Cryptokey", _cryptoKey.hex());

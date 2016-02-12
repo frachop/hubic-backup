@@ -29,7 +29,7 @@
 #define HUBACK_NAME "hubic-backup"
 #define HUBACK_VERSION_MAJOR "0"
 #define HUBACK_VERSION_MINOR "1"
-#define HUBACK_VERSION_BUILD "51"
+#define HUBACK_VERSION_BUILD "53"
 #define HUBACK_VERSION HUBACK_VERSION_MAJOR "." HUBACK_VERSION_MINOR "." HUBACK_VERSION_BUILD
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
