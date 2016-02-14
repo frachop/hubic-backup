@@ -24,7 +24,7 @@
 
 #include "curl.h"
 #include "credentials.h"
-#include "../thirdparty/jsonxx/jsonxx.h"
+#include "../thirdparty/jsonxx/jsonxx.cc"
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
