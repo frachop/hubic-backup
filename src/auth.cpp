@@ -26,9 +26,6 @@
 #include "common.h"
 #include "base64.h"
 #include "request.h"
-#include "token.h"
-
-#include <jsoncpp/json/json.h>
 
 #define AUTH_LOG "[Auth] "
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////

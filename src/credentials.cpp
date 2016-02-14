@@ -88,6 +88,33 @@ bool CCredentials::fromJson(const std::string & j)
 	}
 
 	return true;
-
 }
 
+//- /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool CToken::fromJson(const std::string & jsonStr)
+{
+	clear();
+
+	jsonxx::Object root;
+	if (!root.parse(jsonStr)) {
+		LOGE("Token json parse error {}", jsonStr);
+		return false;
+	}
+
+	const std::set<std::string> expectedKeys {
+		"refresh_token","access_token","token_type"
+	};
+
+	for (auto k : expectedKeys) {
+		if (!root.has<jsonxx::String>(k)) {
+			LOGE("Token json parse error. can't find key : {}", k);
+			return false;
+		}
+	}
+
+	_accessToken = root.get<jsonxx::String>("access_token");
+	_refreshToken= root.get<jsonxx::String>("refresh_token");
+	_type        = root.get<jsonxx::String>("token_type");
+	return true;
+}

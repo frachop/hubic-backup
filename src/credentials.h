@@ -25,6 +25,7 @@
 #pragma once
 
 #include <string>
+#include <cstdint>
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -48,4 +49,69 @@ private:
 	std::string _expires ;
 };
 
+//- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+class CToken
+{
+public:
+	CToken();
+	CToken(const CToken & src);
+	CToken& operator=(const CToken & src);
+
+public:
+	bool isValid() const;
+	void clear();
+	bool fromJson(const std::string & jsonStr);
+	
+public:
+	std::string accessToken () const { return _accessToken; }
+	std::string regreshToken() const { return _refreshToken; }
+	std::string         type() const { return _type; }
+	
+private:
+	std::string _accessToken ;
+	std::string _refreshToken;
+	std::string _type        ;
+};
+
+//- /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+inline CToken::CToken()
+:	_accessToken()
+,	_refreshToken()
+,	_type()
+{
+}
+
+inline CToken::CToken(const CToken & src)
+:	_accessToken(src._accessToken)
+,	_refreshToken(src._refreshToken)
+,	_type(src._type)
+{
+}
+
+inline CToken& CToken::operator=(const CToken & src)
+{
+	if (this != &src)
+	{
+		_accessToken = src._accessToken;
+		_refreshToken= src._refreshToken;
+		_type        = src._type;
+	}
+	
+	return (*this);
+}
+
+inline bool CToken::isValid() const
+{
+	return !(
+		_accessToken.empty() || _refreshToken.empty() || _type.empty()
+	);
+}
+
+inline void CToken::clear()
+{
+	_accessToken.clear();
+	_refreshToken.clear();
+	_type.clear();
+}
