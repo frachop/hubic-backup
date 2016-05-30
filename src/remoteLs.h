@@ -33,12 +33,12 @@ class CRemoteLs
 {
 public:
 	CRemoteLs();
-	void build( const bf::path & folder, const CCredentials & cr, std::size_t threadCount = 6);
+	void build( const bf::path & folder, const CCredentials & cr, std::size_t threadCount = 6, const std::string & container = "default");
 	const std::set<bf::path> & paths() const { return _paths; }
 	bool exists(const bf::path & p) const { return _paths.find(p) != _paths.end(); }
 	
 private:
-	void run(); // thread function
+	void run(const char* container); // thread function
 	void logNotifier(); // thread function
 
 private:

@@ -80,6 +80,8 @@ enum class EOptionFlag {
 
 	,	cryptPassword
 	,	removeNonExistingFiles
+	
+	,	uploadThreadCount
 };
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -92,7 +94,6 @@ enum class EOptionGroup {
 };
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 
 static const std::map<EOptionGroup, std::string> _g {
 		{ EOptionGroup::general    , "general" }
@@ -157,16 +158,16 @@ static const std::map<EOptionFlag, SOption> _o {
 	,	{EOptionFlag::hubicLogin   , { EOptionGroup::auth       , "login"         , "hubic login"    , "l"}}
 	,	{EOptionFlag::hubicPwd     , { EOptionGroup::auth       , "pwd"           , "hubic password" , "p"}}
 	
-	,	{EOptionFlag::srcFolder    , { EOptionGroup::source     , "src"           , "source folder", "i" }}
-	,	{EOptionFlag::excludes     , { EOptionGroup::source     , "excludes"      , "optional exclude file list path", "x" }}
+	,	{EOptionFlag::srcFolder     , { EOptionGroup::source     , "src"           , "source folder", "i" }}
+	,	{EOptionFlag::excludes      , { EOptionGroup::source     , "excludes"      , "optional exclude file list path", "x" }}
 	,	{EOptionFlag::fingerPrintMd5, { EOptionGroup::source     , "fingerprint-md5"      , "force local md5 computation to compare with destination file. CPU expansive" }}
 	
 	,	{EOptionFlag::dstContainer , { EOptionGroup::destination, "container"     , "destination hubic container", "c" }}
 	,	{EOptionFlag::dstFolder    , { EOptionGroup::destination, "dst"           , "destination folder", "o" }}
 	,	{EOptionFlag::cryptPassword, { EOptionGroup::destination, "crypt-password", "optional crypto password", "k" }}
-
 	,	{EOptionFlag::removeNonExistingFiles, { EOptionGroup::destination, "del-non-existing", "allow deleting non existing backup files", "d" }}
 	
+	,	{EOptionFlag::uploadThreadCount, { EOptionGroup::destination, "up-thread-count", "upload thread count" }}
 };
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -200,6 +201,8 @@ static po::value_semantic* getDefaultValue(EOptionFlag f)
 		case EOptionFlag::dstFolder    : return po::value<std::string>();
 
 		case EOptionFlag::removeNonExistingFiles: break;
+		case EOptionFlag::uploadThreadCount: return po::value<int>();
+		
 		case EOptionFlag::cryptPassword: return po::value<std::string>();
 	};
 	return new po::untyped_value(true);
@@ -372,6 +375,15 @@ bool COptionsPriv::parse(int ac, char** av)
 			thCount -= _numThreadRemoteMd5;
 			
 			_numThreadLocalMd5 = thCount;
+		}
+
+		if (exists(EOptionFlag::uploadThreadCount))
+		{
+			int c = at( EOptionFlag::uploadThreadCount).as<int>();
+			if (c <= 0)
+				throw std::logic_error("invalid upload thread count");
+			
+			_numThreadUpload = c;
 		}
 
 	}

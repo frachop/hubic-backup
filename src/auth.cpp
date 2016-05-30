@@ -43,7 +43,8 @@ static const std::string argCredentials = base64_encode(argClientId + ":" + argC
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static const std::string argScope = "usage.r,account.r,getAllLinks.r,credentials.r,sponsorCode.r,activate.w,sponsored.r,links.drw";
+//static const std::string argScope = "usage.r,account.r,getAllLinks.r,credentials.r,sponsorCode.r,activate.w,sponsored.r,links.drw";
+static const std::string argScope = "usage.r,account.r,getAllLinks.r,credentials.r";
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -117,7 +118,7 @@ static std::string requestTokenCode(CRequest & rq,  const std::string & code, co
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static CToken requestToken(CRequest & rq, const std::string & code, const CGetCredentialSettings & settings)
+static CTokens requestToken(CRequest & rq, const std::string & code, const CGetCredentialSettings & settings)
 {
 	LOGD(AUTH_LOG "request token ...");
 
@@ -130,11 +131,12 @@ static CToken requestToken(CRequest & rq, const std::string & code, const CGetCr
 	rq.setPostData(datas);
 	const CURLcode res =rq.post(configTokenUrl.c_str());
 
-	CToken tk;
+	CTokens tk;
 	if (res)
 		throw std::logic_error(fmt::format("Connection error : curl code = {}", res));
 	
 	const std::string & response = rq.getResponse();
+	//LOGD(AUTH_LOG "tokens : {}", response);
 	
 	if (!tk.fromJson(response))
 		throw std::logic_error(fmt::format("json error {} on {}", __PRETTY_FUNCTION__, response));
@@ -143,7 +145,7 @@ static CToken requestToken(CRequest & rq, const std::string & code, const CGetCr
 	return tk;
 }
 
-static CCredentials getCredentials(CRequest & rq, const CToken & t)
+static CCredentials getCredentials(CRequest & rq, const CTokens & t)
 {
 	LOGD(AUTH_LOG "get credentials ...");
 	
@@ -151,7 +153,7 @@ static CCredentials getCredentials(CRequest & rq, const CToken & t)
 	rq.addHeader("Accept", "application/json");
 	rq.addHeader("Authorization", "Bearer " + t.accessToken());
 	
-	CCredentials result;
+	CCredentials result(t);
 	const CURLcode res = rq.get(configAPIUrl + "account/credentials");
 	if (res)
 		throw std::logic_error(fmt::format("Connection error : curl code = {}", res));
@@ -174,13 +176,13 @@ CCredentials getCredentials(const CGetCredentialSettings & settings, bool bVerbo
 		sleep(2);
 		const std::string code= requestTokenCode(rq, rqCode, settings); assert(!code.empty());
 		
-		CToken token= requestToken(rq, code, settings);
-		if (!token.isValid()) {
+		CTokens tokens= requestToken(rq, code, settings);
+		if (!tokens.isValid()) {
 			LOGE(AUTH_LOG "invalid token");
 			exit( EXIT_FAILURE );
 		}
 		
-		CCredentials credentials =getCredentials(rq, token);
+		CCredentials credentials =getCredentials(rq, tokens);
 		return credentials;
 		
 	}
@@ -195,6 +197,7 @@ CCredentials getCredentials(const CGetCredentialSettings & settings, bool bVerbo
 		exit( EXIT_FAILURE );
 	}
 	
-	return CCredentials();
+	assert(false);
+	return CCredentials(CTokens());
 }
 

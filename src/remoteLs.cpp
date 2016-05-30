@@ -100,7 +100,7 @@ CRemoteLs::CRemoteLs()
 {
 }
 
-void CRemoteLs::build( const bf::path & folder, const CCredentials & cr, std::size_t threadCount)
+void CRemoteLs::build( const bf::path & folder, const CCredentials & cr, std::size_t threadCount, const std::string & container)
 {
 	LOGI("building remote tree from {} ... ", folder.string());
 
@@ -112,7 +112,7 @@ void CRemoteLs::build( const bf::path & folder, const CCredentials & cr, std::si
 	_folderCount = 1;
 	std::vector<std::thread> threads(threadCount);
 	for (std::size_t i=0; i<threadCount; ++i)
-		threads[i] = std::thread( &CRemoteLs::run, this);
+		threads[i] = std::thread( &CRemoteLs::run, this, container.c_str());
 
 	_queue->add( new CAssetData( true, folder.string() ) );
 
@@ -143,10 +143,11 @@ void CRemoteLs::logNotifier() // thread function
 	}
 }
 
-void CRemoteLs::run() // thread function
+void CRemoteLs::run(const char* container) // thread function
 {
 	const CCredentials cr(_cr);
 	
+	const std::string cont(container);
 	CRequest rq(false);
 	while (_folderCount > 0) {
 
@@ -162,7 +163,7 @@ void CRemoteLs::run() // thread function
 		
 		rq.addHeader(headerAuthToken, cr.token());
 		
-		const std::string url( fmt::format("{}/{}/?prefix={}/&delimiter=/", cr.endpoint(), "default", rq.escapePath(folder).string()) );
+		const std::string url( fmt::format("{}/{}/?prefix={}/&delimiter=/", cr.endpoint(), container, rq.escapePath(folder).string()) );
 		rq.get(url);
 		const std::string r = rq.getResponse();
 		//std::cout << "-- " << r.length() << std::endl << r  << std::endl ;

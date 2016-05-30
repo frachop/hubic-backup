@@ -29,34 +29,12 @@
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class CCredentials
+class CTokens
 {
 public:
-	CCredentials();
-	CCredentials(const CCredentials & src);
-	CCredentials & operator=(const CCredentials & src);
-	void clear();
-	bool fromJson(const std::string & j);
-	
-public:
-	std::string token   () const { return _token   ; }
-	std::string endpoint() const { return _endpoint; }
-	std::string expires () const { return _expires ; }
-
-private:
-	std::string _token   ;
-	std::string _endpoint;
-	std::string _expires ;
-};
-
-//- /////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-class CToken
-{
-public:
-	CToken();
-	CToken(const CToken & src);
-	CToken& operator=(const CToken & src);
+	CTokens();
+	CTokens(const CTokens & src);
+	CTokens& operator=(const CTokens & src);
 
 public:
 	bool isValid() const;
@@ -76,21 +54,47 @@ private:
 
 //- /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-inline CToken::CToken()
+class CCredentials
+{
+public:
+	CCredentials();
+	explicit CCredentials(const CTokens & t);
+	CCredentials(const CCredentials & src);
+	CCredentials & operator=(const CCredentials & src);
+	void clear();
+	bool fromJson(const std::string & j);
+	
+public:
+	std::string token   () const { return _token   ; }
+	std::string endpoint() const { return _endpoint; }
+	std::string expires () const { return _expires ; }
+	CTokens     tokens  () const { return _tokens; }
+
+private:
+	std::string _token   ;
+	std::string _endpoint;
+	std::string _expires ;
+	CTokens     _tokens  ;
+};
+
+
+//- /////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+inline CTokens::CTokens()
 :	_accessToken()
 ,	_refreshToken()
 ,	_type()
 {
 }
 
-inline CToken::CToken(const CToken & src)
+inline CTokens::CTokens(const CTokens & src)
 :	_accessToken(src._accessToken)
 ,	_refreshToken(src._refreshToken)
 ,	_type(src._type)
 {
 }
 
-inline CToken& CToken::operator=(const CToken & src)
+inline CTokens& CTokens::operator=(const CTokens & src)
 {
 	if (this != &src)
 	{
@@ -102,14 +106,14 @@ inline CToken& CToken::operator=(const CToken & src)
 	return (*this);
 }
 
-inline bool CToken::isValid() const
+inline bool CTokens::isValid() const
 {
 	return !(
 		_accessToken.empty() || _refreshToken.empty() || _type.empty()
 	);
 }
 
-inline void CToken::clear()
+inline void CTokens::clear()
 {
 	_accessToken.clear();
 	_refreshToken.clear();

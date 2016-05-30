@@ -209,7 +209,7 @@ CUploader::result_code CUploader::upload(CAsset * p)
 		_cryptoContext = nullptr;
 
 		_md5EncComputer.done();
-		LOGI("md5 encrypted '{}' = '{}'", _crt->getRelativePath().string(), _md5EncComputer.getDigest().hex());
+		LOGD("md5 encrypted '{}' = '{}'", _crt->getRelativePath().string(), _md5EncComputer.getDigest().hex());
 	}
 
 	
