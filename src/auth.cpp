@@ -75,7 +75,7 @@ static std::string requestCode(CRequest & request, const CGetCredentialSettings 
 	while (isdigit(response[i]))
 		num += response[i++];
 	
-	LOGD(AUTH_LOG "resquest code : '{}'", num);
+	LOGD(AUTH_LOG "request code : '{}'", num);
 	return num;
 }
 
