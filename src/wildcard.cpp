@@ -46,6 +46,8 @@ static void EscapeRegex(std::string &regex)
     boost::replace_all(regex, "+", "\\+");
     boost::replace_all(regex, "?", "\\?");
     boost::replace_all(regex, "/", "\\/");
+    boost::replace_all(regex, "{", "\\{");
+    boost::replace_all(regex, "}", "\\}");
 }
 
 bool matchTextWithWildcards(const std::string &text, std::string wildcardPattern, bool caseSensitive /*= true*/)
